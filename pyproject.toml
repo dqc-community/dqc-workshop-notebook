@@ -9,9 +9,11 @@ dependencies = [
     "marimo",
     "pandas",
     "matplotlib",
+    "pylatexenc",
     "qiskit>=1.0",
     "qiskit-aer",
     "qiskit-ibm-runtime",
+    "bosonic-sdk-felix",
 ]
 
 [project.optional-dependencies]
