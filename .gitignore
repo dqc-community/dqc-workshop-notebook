@@ -6,3 +6,4 @@ tutorial-venv/
 .ipynb_checkpoints/
 __marimo__/
 uv.lock
+__marimo__/session/
