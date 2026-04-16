@@ -2,48 +2,43 @@
 
 This repository contains the workshop notebooks and marimo app for the DQC tutorial.
 
-## Setup (recommended)
+## Quick Start
 
-This project is configured to use the pip installer script:
-`install_tutorial_dependencies_pip.py`
-
-1. Create and activate an environment.
-2. Run the installer script from that active environment.
-
-Example (bash):
+Dependencies are bundled with the notebook using [Marimo's sandbox mode](https://docs.marimo.io/guides/package_management/inlining_dependencies/).
 
 ```bash
-python -m venv tutorial-venv
-source tutorial-venv/bin/activate
-python install_tutorial_dependencies_pip.py
+UV_INDEX_STRATEGY=unsafe-best-match marimo edit --sandbox tutorial_marimo.py
 ```
 
-Windows (PowerShell):
-
-```powershell
-python -m venv tutorial-venv
-.\tutorial-venv\Scripts\Activate.ps1
-python install_tutorial_dependencies_pip.py
-```
-
-macOS (Homebrew):
+Or using uv:
 
 ```bash
-brew install python
-python3 -m venv tutorial-venv
-source tutorial-venv/bin/activate
-python install_tutorial_dependencies_pip.py
+UV_INDEX_STRATEGY=unsafe-best-match uv run marimo edit --sandbox tutorial_marimo.py
+```
+
+## Requirements
+
+- Python 3.10+
+- [marimo](https://marimo.io)
+- [uv](https://github.com/astral-sh/uv)
+
+## Development
+
+For development, you can sync dependencies with uv:
+
+```bash
+uv sync
 ```
 
 Optional comparison extras:
 
 ```bash
-python install_tutorial_dependencies_pip.py --comparison
+uv sync --extra comparison
 ```
 
 ## Run
 
-Run the marimo tutorial:
+Run the marimo tutorial (in development mode):
 
 ```bash
 marimo edit tutorial_marimo.py

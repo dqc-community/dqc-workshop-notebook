@@ -1,0 +1,42 @@
+[project]
+name = "dqc-workshop"
+version = "0.1.0"
+description = "Distributed quantum computing workshop notebook"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "ipykernel",
+    "marimo",
+    "pandas",
+    "matplotlib",
+    "pylatexenc",
+    "qiskit>=1.0",
+    "qiskit-aer",
+    "qiskit-ibm-runtime",
+    "bosonic-sdk-felix",
+]
+
+[project.optional-dependencies]
+comparison = ["bosonic-sdk-felix"]
+
+[[tool.uv.index]]
+name = "test-pypi"
+url = "https://test.pypi.org/simple/"
+default = false
+
+[[tool.uv.index]]
+name = "pypi"
+url = "https://pypi.org/simple/"
+default = true
+
+[tool.uv.sources]
+bosonic-sdk-felix = { index = "test-pypi" }
+
+[tool.uv]
+index-strategy = "unsafe-best-match"
+
+[dependency-groups]
+dev = []
+
+[tool.marimo]
+tags = ["workshop", "quantum-computing"]

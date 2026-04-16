@@ -1,7 +1,37 @@
+# /// script
+# requires-python = ">=3.10"
+# dependencies = [
+#     "ipykernel",
+#     "marimo",
+#     "pandas",
+#     "matplotlib",
+#     "qiskit>=1.0",
+#     "qiskit-aer",
+#     "qiskit-ibm-runtime",
+#     "bosonic-sdk-felix",
+# ]
+#
+# [[tool.uv.index]]
+# name = "test-pypi"
+# url = "https://test.pypi.org/simple/"
+# default = false
+#
+# [[tool.uv.index]]
+# name = "pypi"
+# url = "https://pypi.org/simple/"
+# default = true
+#
+# [tool.uv.sources]
+# bosonic-sdk-felix = { index = "test-pypi" }
+# ///
+#
+# NOTE: Run with UV_INDEX_STRATEGY=unsafe-best-match for sandbox mode
+# e.g., UV_INDEX_STRATEGY=unsafe-best-match marimo edit --sandbox tutorial_marimo.py
+
 import marimo
 
-__generated_with = "0.23.0"
-app = marimo.App(css_file="templates//style_guide.css")
+__generated_with = "0.23.1"
+app = marimo.App(width="medium", css_file="templates/qc-theme.css")
 
 
 @app.cell
@@ -474,7 +504,7 @@ def _(CircuitConverters, module_count):
                 multi_q = multi_q + 1
         return {'single_qubit_count': one_q, 'two_qubit_count': two_q, 'multi_qubit_count': multi_q, 'two_qubit_depth': two_qubit_depth, 'measure_count': measure_count, 'reset_count': reset_count, 'barrier_count': barrier_count}
 
-    
+
     METRIC_REGISTRY = {'n_qubits': lambda s, g, q: s['n_qubits'], 'n_clbits': lambda s, g, q: s['n_clbits'], 'total_ops': lambda s, g, q: s['total_ops'], 'depth': lambda s, g, q: s['depth'], 'gate_counts': lambda s, g, q: s['gate_counts'], 'basis_gates': lambda s, g, q: s['basis_gates'], 'measure_count': lambda s, g, q: q['measure_count'], 'reset_count': lambda s, g, q: q['reset_count'], 'barrier_count': lambda s, g, q: q['barrier_count'], 'local_gate_count': lambda s, g, q: s['local_gate_count'], 'remote_gate_count': lambda s, g, q: s['remote_gate_count'], 'total_remote_gates': lambda s, g, q: s['total_remote_gates'], 'qubit_teleportation_count': lambda s, g, q: s['qubit_teleportation_count'], 'n_classical_gates': lambda s, g, q: s['n_classical_gates'], 'single_qubit_count': lambda s, g, q: q['single_qubit_count'], 'two_qubit_count': lambda s, g, q: q['two_qubit_count'], 'multi_qubit_count': lambda s, g, q: q['multi_qubit_count'], 'two_qubit_depth': lambda s, g, q: q['two_qubit_depth'], 'remote_link_count': lambda s, g, q: g.get('remote_link_psi_minus', 0) + g.get('remote_link_psi_plus', 0)}
 
     def extract_metrics(qc, metric_registry, metric_pairs):
@@ -831,7 +861,6 @@ def _(
             except Exception as exc:
                 _records.append(build_tts_row(_n, _scenario, _k_modules, exc=exc))
     df_tts = pd.DataFrame(_records)
-
     return (df_tts,)
 
 

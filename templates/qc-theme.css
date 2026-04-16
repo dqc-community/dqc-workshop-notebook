@@ -1,0 +1,287 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&family=Montserrat:wght@400;700&display=swap');
+
+:root {
+  color-scheme: light dark;
+
+  --qc-primary: light-dark(#1a1a1a, #ffffff);
+  --qc-secondary: light-dark(#666666, #999999);
+  --qc-tertiary: light-dark(#999999, #666666);
+  --qc-dim: light-dark(#aaaaaa, #555555);
+  --qc-border: light-dark(#cccccc, #444444);
+  --qc-guide: light-dark(#dddddd, #333333);
+  --qc-surface: light-dark(#f5f5f5, #222222);
+  --qc-page: light-dark(#ffffff, #1a1a1a);
+
+  --qc-danger: light-dark(#d4949a, #d4a4aa);
+  --qc-info: light-dark(#89aac8, #99b4d8);
+  --qc-success: light-dark(#8dc0a3, #9dcdb3);
+  --qc-warning: light-dark(#d4a87c, #d4b89c);
+  --qc-secondary-accent: light-dark(#7a8a9c, #8a9aaa);
+
+  --qc-font-small: 0.5625rem;
+  --qc-font-mid: 0.91rem;
+  --qc-font-large: 1.47rem;
+
+  --marimo-text-font: 'Montserrat', sans-serif;
+  --marimo-heading-font: 'Montserrat', sans-serif;
+  --marimo-monospace-font: 'JetBrains Mono', monospace;
+}
+
+body {
+  font-family: 'Montserrat', sans-serif;
+  color: var(--qc-tertiary);
+  background: var(--qc-page);
+  line-height: 1.75;
+  -webkit-font-smoothing: antialiased;
+}
+
+.marimo-cell .output-area .output.block h1,
+.marimo-cell .output-area .output.block h2,
+.marimo-cell .output-area .output.block h3,
+.marimo-cell .output-area .output.block h4,
+.marimo-cell .output-area .output.block h5,
+.marimo-cell .output-area .output.block h6 {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 700;
+  color: var(--qc-primary);
+  letter-spacing: 0.5px;
+}
+
+.marimo-cell .output-area .output.block h1 {
+  font-size: var(--qc-font-large);
+  margin-top: 38px;
+  margin-bottom: 15px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--qc-guide);
+}
+
+.marimo-cell .output-area .output.block h2 {
+  font-size: var(--qc-font-mid);
+  font-weight: 700;
+  color: var(--qc-secondary);
+  margin-top: 24px;
+  margin-bottom: 9px;
+}
+
+.marimo-cell .output-area .output.block h3 {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: var(--qc-font-small);
+  font-weight: 500;
+  color: var(--qc-secondary);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-top: 24px;
+  margin-bottom: 9px;
+}
+
+.marimo-cell .output-area .output.block h4,
+.marimo-cell .output-area .output.block h5,
+.marimo-cell .output-area .output.block h6 {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: var(--qc-font-small);
+  font-weight: 500;
+  color: var(--qc-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-top: 15px;
+  margin-bottom: 6px;
+}
+
+.marimo-cell .output-area .output.block strong {
+  font-weight: 700;
+  color: var(--qc-secondary);
+}
+
+.marimo-cell .output-area .output.block .paragraph {
+  display: block;
+  font-family: 'Montserrat', sans-serif;
+  font-size: var(--qc-font-mid);
+  color: var(--qc-tertiary);
+  line-height: 1.75;
+  margin-bottom: 9px;
+}
+
+.marimo-cell .output-area .output.block pre,
+.marimo-cell .output-area .output.block code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: var(--qc-font-mid);
+}
+
+.marimo-cell .output-area .output.block pre {
+  background: var(--qc-surface);
+  border: none;
+  padding: 12px 16px;
+  line-height: 1.8;
+}
+
+.marimo-cell .output-area .output.block code {
+  background: var(--qc-surface);
+  color: var(--qc-secondary);
+  padding: 0.1em 0.4em;
+}
+
+.marimo-cell .output-area .output.block .codehilite {
+  background: var(--qc-surface);
+  border-left: 1px solid var(--qc-guide);
+  padding: 14px 16px;
+  line-height: 1.8;
+  overflow-x: auto;
+}
+
+.marimo-cell .output-area .output.block .codehilite code {
+  background: transparent;
+  padding: 0;
+  font-size: var(--qc-font-mid);
+}
+
+.marimo-cell .output-area .output.block ul,
+.marimo-cell .output-area .output.block ol {
+  color: var(--qc-tertiary);
+}
+
+.marimo-cell .output-area .output.block li {
+  margin-bottom: 6px;
+}
+
+.marimo-cell .output-area .output.block blockquote {
+  border-left: 1px solid var(--qc-border);
+  color: var(--qc-tertiary);
+  font-style: normal;
+  padding-left: 15px;
+  margin-left: 0;
+}
+
+.marimo-cell .output-area .output.block blockquote p,
+.marimo-cell .output-area .output.block blockquote .paragraph {
+  color: var(--qc-tertiary);
+}
+
+.marimo-cell .output-area .output.block a {
+  color: var(--qc-secondary);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition:
+    color 120ms ease,
+    border-color 120ms ease;
+}
+
+.marimo-cell .output-area .output.block a:hover {
+  color: var(--qc-primary);
+  border-bottom-color: var(--qc-primary);
+}
+
+.marimo-cell .output-area .output.block table {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: var(--qc-font-mid);
+}
+
+.marimo-cell .output-area .output.block table th {
+  font-weight: 500;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--qc-secondary);
+  border-bottom: 1px solid var(--qc-border);
+  padding: 6px 9px;
+}
+
+.marimo-cell .output-area .output.block table td {
+  color: var(--qc-tertiary);
+  letter-spacing: 0.3px;
+  padding: 6px 9px;
+}
+
+.marimo-cell .output-area .output.block table tr:hover {
+  background: var(--qc-surface);
+}
+
+::selection {
+  background: var(--qc-surface);
+  color: var(--qc-primary);
+}
+
+.marimo-cell .output-area {
+  padding: 0;
+}
+
+/* ── Callout host-level styling ──
+   Callout internals are in shadow DOM, but we can style the host element.
+   data-kind attribute has extra quotes: data-kind='"info"' etc.
+   We add a left border accent to the host element itself. */
+
+marimo-callout-output {
+  display: block;
+  margin-bottom: 9px;
+  border-radius: 0;
+}
+
+/* ── Syntax highlighting (codehilite Pygments classes) ──
+   These apply when markdown fenced code blocks are rendered.
+   Translate from quarto/_qc-shared.scss lines 167-230. */
+
+.codehilite .k,
+.codehilite .kd,
+.codehilite .kn,
+.codehilite .kp,
+.codehilite .kr,
+.codehilite .kt {
+  color: var(--qc-primary);
+  font-weight: 700;
+}
+
+.codehilite .n,
+.codehilite .nb,
+.codehilite .nc,
+.codehilite .nd,
+.codehilite .nf,
+.codehilite .ni,
+.codehilite .nn,
+.codehilite .nv {
+  color: var(--qc-secondary);
+}
+
+.codehilite .m,
+.codehilite .mf,
+.codehilite .mh,
+.codehilite .mi,
+.codehilite .mo {
+  color: #89aac8; /* serenity — DATA palette for numbers */
+}
+
+.codehilite .s,
+.codehilite .s1,
+.codehilite .s2,
+.codehilite .sb,
+.codehilite .sc,
+.codehilite .sd,
+.codehilite .se,
+.codehilite .sh,
+.codehilite .si,
+.codehilite .sx {
+  color: #d4a87c; /* apricot — DATA palette for strings */
+}
+
+.codehilite .c,
+.codehilite .c1,
+.codehilite .cm,
+.codehilite .cs {
+  color: var(--qc-dim);
+  font-style: italic;
+}
+
+.codehilite .o,
+.codehilite .ow {
+  color: var(--qc-secondary);
+}
+
+.codehilite .err {
+  color: var(--qc-danger);
+}
+
+/* ── Figure captions ── */
+figcaption {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: var(--qc-font-small);
+  color: var(--qc-dim);
+  letter-spacing: 0.3px;
+  margin-top: 9px;
+}
