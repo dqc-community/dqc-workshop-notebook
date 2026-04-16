@@ -1,0 +1,25 @@
+[project]
+name = "dqc-workshop"
+version = "0.1.0"
+description = "Distributed quantum computing workshop notebook"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "ipykernel",
+    "marimo",
+    "pandas",
+    "matplotlib",
+    "qiskit>=1.0",
+    "qiskit-aer",
+    "qiskit-ibm-runtime",
+    "bosonic-sdk-felix",
+]
+
+[project.optional-dependencies]
+comparison = ["bosonic-sdk-felix[comparison]"]
+
+[tool.uv]
+dev-dependencies = []
+
+[tool.marimo]
+tags = ["workshop", "quantum-computing"]

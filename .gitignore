@@ -5,3 +5,4 @@ tutorial-venv/
 .deps/
 .ipynb_checkpoints/
 __marimo__/
+uv.lock
