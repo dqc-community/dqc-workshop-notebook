@@ -4,3 +4,4 @@ __pycache__/
 tutorial-venv/
 .deps/
 .ipynb_checkpoints/
+__marimo__/
