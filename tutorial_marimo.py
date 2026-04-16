@@ -1,3 +1,30 @@
+# /// script
+# requires-python = ">=3.10"
+# dependencies = [
+#     "ipykernel",
+#     "marimo",
+#     "pandas",
+#     "matplotlib",
+#     "qiskit>=1.0",
+#     "qiskit-aer",
+#     "qiskit-ibm-runtime",
+#     "bosonic-sdk-felix",
+# ]
+#
+# [[tool.uv.index]]
+# name = "test-pypi"
+# url = "https://test.pypi.org/simple/"
+# default = false
+#
+# [[tool.uv.index]]
+# name = "pypi"
+# url = "https://pypi.org/simple/"
+# default = true
+#
+# [tool.uv.sources]
+# bosonic-sdk-felix = { index = "test-pypi" }
+# ///
+
 import marimo
 
 __generated_with = "0.23.1"
