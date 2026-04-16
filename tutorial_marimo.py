@@ -24,6 +24,9 @@
 # [tool.uv.sources]
 # bosonic-sdk-felix = { index = "test-pypi" }
 # ///
+#
+# NOTE: Run with UV_INDEX_STRATEGY=unsafe-best-match for sandbox mode
+# e.g., UV_INDEX_STRATEGY=unsafe-best-match marimo edit --sandbox tutorial_marimo.py
 
 import marimo
 

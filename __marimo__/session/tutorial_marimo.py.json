@@ -2,20 +2,13 @@
   "version": "1",
   "metadata": {
     "marimo_version": "0.23.1",
-    "script_metadata_hash": null
+    "script_metadata_hash": "519effc0a77bb7821685f251dc983e88"
   },
   "cells": [
     {
       "id": "Hbol",
       "code_hash": "1d0db38904205bec4d6f6f6a1f6cec3e",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
-        }
-      ],
+      "outputs": [],
       "console": []
     },
     {
@@ -47,22 +40,8 @@
     {
       "id": "bkHC",
       "code_hash": "60b2add0f8f60e025a75d3b6bbf82991",
-      "outputs": [
-        {
-          "type": "error",
-          "ename": "exception",
-          "evalue": "No module named 'IPython'",
-          "traceback": null
-        }
-      ],
-      "console": [
-        {
-          "type": "stream",
-          "name": "stderr",
-          "text": "<span class=\"codehilite\"><div class=\"highlight\"><pre><span></span><span class=\"gt\">Traceback (most recent call last):</span>\n  File <span class=\"nb\">&quot;/var/folders/96/pxh8r9g959q1t227fcgdg2g00000gn/T/marimo_38516/__marimo__cell_bkHC_.py&quot;</span>, line <span class=\"m\">2</span>, in <span class=\"n\">&lt;module&gt;</span>\n<span class=\"w\">    </span><span class=\"kn\">from</span><span class=\"w\"> </span><span class=\"nn\">IPython.display</span><span class=\"w\"> </span><span class=\"kn\">import</span> <span class=\"n\">Markdown</span><span class=\"p\">,</span> <span class=\"n\">display</span>\n<span class=\"gr\">ModuleNotFoundError</span>: <span class=\"n\">No module named &#39;IPython&#39;</span>\n</pre></div>\n</span>",
-          "mimetype": "application/vnd.marimo+traceback"
-        }
-      ]
+      "outputs": [],
+      "console": []
     },
     {
       "id": "lEQa",
@@ -93,27 +72,13 @@
     {
       "id": "Xref",
       "code_hash": "2e17a88a9a581b3fd4ba8c29e28d5701",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
-        }
-      ],
+      "outputs": [],
       "console": []
     },
     {
       "id": "SFPL",
       "code_hash": "3dd8a73c3027387413e1838232d01492",
-      "outputs": [
-        {
-          "type": "error",
-          "ename": "exception",
-          "evalue": "An ancestor raised an exception (ModuleNotFoundError): ",
-          "traceback": null
-        }
-      ],
+      "outputs": [],
       "console": []
     },
     {
@@ -132,47 +97,19 @@
     {
       "id": "RGSE",
       "code_hash": "ff7dd3bb6e85290da875022ced7b9059",
-      "outputs": [
-        {
-          "type": "error",
-          "ename": "exception",
-          "evalue": "No module named 'bosonic_converters'",
-          "traceback": null
-        }
-      ],
-      "console": [
-        {
-          "type": "stream",
-          "name": "stderr",
-          "text": "<span class=\"codehilite\"><div class=\"highlight\"><pre><span></span><span class=\"gt\">Traceback (most recent call last):</span>\n  File <span class=\"nb\">&quot;/var/folders/96/pxh8r9g959q1t227fcgdg2g00000gn/T/marimo_38516/__marimo__cell_RGSE_.py&quot;</span>, line <span class=\"m\">1</span>, in <span class=\"n\">&lt;module&gt;</span>\n<span class=\"w\">    </span><span class=\"kn\">from</span><span class=\"w\"> </span><span class=\"nn\">bosonic_converters</span><span class=\"w\"> </span><span class=\"kn\">import</span> <span class=\"n\">CircuitConverters</span>\n<span class=\"gr\">ModuleNotFoundError</span>: <span class=\"n\">No module named &#39;bosonic_converters&#39;</span>\n</pre></div>\n</span>",
-          "mimetype": "application/vnd.marimo+traceback"
-        }
-      ]
+      "outputs": [],
+      "console": []
     },
     {
       "id": "Kclp",
       "code_hash": "147470c997bcdf3bdc15c72f08a5c376",
-      "outputs": [
-        {
-          "type": "error",
-          "ename": "exception",
-          "evalue": "An ancestor raised an exception (ModuleNotFoundError): ",
-          "traceback": null
-        }
-      ],
+      "outputs": [],
       "console": []
     },
     {
       "id": "emfo",
       "code_hash": "cfe50de9ef9c3179d97f27c5dd47fffb",
-      "outputs": [
-        {
-          "type": "error",
-          "ename": "exception",
-          "evalue": "An ancestor raised an exception (ModuleNotFoundError): ",
-          "traceback": null
-        }
-      ],
+      "outputs": [],
       "console": []
     },
     {
@@ -191,14 +128,7 @@
     {
       "id": "nWHF",
       "code_hash": "9f2474da8e6acf12dd2edbc0975e83e3",
-      "outputs": [
-        {
-          "type": "error",
-          "ename": "exception",
-          "evalue": "An ancestor raised an exception (ModuleNotFoundError): ",
-          "traceback": null
-        }
-      ],
+      "outputs": [],
       "console": []
     },
     {
@@ -217,53 +147,25 @@
     {
       "id": "ZHCJ",
       "code_hash": "68f11d1e57aa9c6b9040cbaa7782648b",
-      "outputs": [
-        {
-          "type": "error",
-          "ename": "exception",
-          "evalue": "An ancestor raised an exception (ModuleNotFoundError): ",
-          "traceback": null
-        }
-      ],
+      "outputs": [],
       "console": []
     },
     {
       "id": "ROlb",
       "code_hash": "a2711e482c60045a6c38b61fc503f161",
-      "outputs": [
-        {
-          "type": "error",
-          "ename": "exception",
-          "evalue": "An ancestor raised an exception (ModuleNotFoundError): ",
-          "traceback": null
-        }
-      ],
+      "outputs": [],
       "console": []
     },
     {
       "id": "qnkX",
       "code_hash": "466cb55326dcd1e8bfea9eb6a24bb686",
-      "outputs": [
-        {
-          "type": "error",
-          "ename": "exception",
-          "evalue": "An ancestor raised an exception (ModuleNotFoundError): ",
-          "traceback": null
-        }
-      ],
+      "outputs": [],
       "console": []
     },
     {
       "id": "TqIu",
       "code_hash": "50e4acaafab5a33afe6f275ffc7664d0",
-      "outputs": [
-        {
-          "type": "error",
-          "ename": "exception",
-          "evalue": "An ancestor raised an exception (ModuleNotFoundError): ",
-          "traceback": null
-        }
-      ],
+      "outputs": [],
       "console": []
     },
     {
@@ -295,14 +197,7 @@
     {
       "id": "ulZA",
       "code_hash": "ca31df50cf417888b1f198a4639799c5",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
-        }
-      ],
+      "outputs": [],
       "console": []
     },
     {
@@ -321,40 +216,19 @@
     {
       "id": "Pvdt",
       "code_hash": "87b2c1b9d234881d4002d145fd948e0e",
-      "outputs": [
-        {
-          "type": "error",
-          "ename": "exception",
-          "evalue": "An ancestor raised an exception (ModuleNotFoundError): ",
-          "traceback": null
-        }
-      ],
+      "outputs": [],
       "console": []
     },
     {
       "id": "ZBYS",
       "code_hash": "bc0ad38caabec34ee6f3d6dc09a01058",
-      "outputs": [
-        {
-          "type": "error",
-          "ename": "exception",
-          "evalue": "An ancestor raised an exception (ModuleNotFoundError): ",
-          "traceback": null
-        }
-      ],
+      "outputs": [],
       "console": []
     },
     {
       "id": "aLJB",
       "code_hash": "960553ecdf4e8a5ac0d1e1d0e7359160",
-      "outputs": [
-        {
-          "type": "error",
-          "ename": "exception",
-          "evalue": "An ancestor raised an exception (ModuleNotFoundError): ",
-          "traceback": null
-        }
-      ],
+      "outputs": [],
       "console": []
     },
     {
@@ -386,14 +260,7 @@
     {
       "id": "AjVT",
       "code_hash": "f2d8c3c77f9438473819294c8ffaf01c",
-      "outputs": [
-        {
-          "type": "error",
-          "ename": "exception",
-          "evalue": "An ancestor raised an exception (ModuleNotFoundError): ",
-          "traceback": null
-        }
-      ],
+      "outputs": [],
       "console": []
     },
     {
@@ -412,14 +279,7 @@
     {
       "id": "NCOB",
       "code_hash": "57975c41c262827cb4072b9a9a84663c",
-      "outputs": [
-        {
-          "type": "error",
-          "ename": "exception",
-          "evalue": "An ancestor raised an exception (ModuleNotFoundError): ",
-          "traceback": null
-        }
-      ],
+      "outputs": [],
       "console": []
     },
     {
@@ -477,79 +337,37 @@
     {
       "id": "yCnT",
       "code_hash": "0cf3f443109feaa5ad165b1117941f2b",
-      "outputs": [
-        {
-          "type": "error",
-          "ename": "exception",
-          "evalue": "An ancestor raised an exception (ModuleNotFoundError): ",
-          "traceback": null
-        }
-      ],
+      "outputs": [],
       "console": []
     },
     {
       "id": "wlCL",
       "code_hash": "a9e5f51fec561a1358282f4907e7e1b5",
-      "outputs": [
-        {
-          "type": "data",
-          "data": {
-            "text/plain": ""
-          }
-        }
-      ],
+      "outputs": [],
       "console": []
     },
     {
       "id": "kqZH",
       "code_hash": "56ac9cceef463df53132a51ac9323015",
-      "outputs": [
-        {
-          "type": "error",
-          "ename": "exception",
-          "evalue": "An ancestor raised an exception (ModuleNotFoundError): ",
-          "traceback": null
-        }
-      ],
+      "outputs": [],
       "console": []
     },
     {
       "id": "wAgl",
       "code_hash": "5e24b113f101e858d18d75d54b386a5a",
-      "outputs": [
-        {
-          "type": "error",
-          "ename": "exception",
-          "evalue": "An ancestor raised an exception (ModuleNotFoundError): ",
-          "traceback": null
-        }
-      ],
+      "outputs": [],
       "console": []
     },
     {
       "id": "rEll",
       "code_hash": "57056882a4e54431c470a9ec762c5677",
-      "outputs": [
-        {
-          "type": "error",
-          "ename": "exception",
-          "evalue": "An ancestor raised an exception (ModuleNotFoundError): ",
-          "traceback": null
-        }
-      ],
+      "outputs": [],
       "console": []
     },
     {
       "id": "dGlV",
       "code_hash": "8afadcdc6df8c8cf7c51cb9d6670c423",
-      "outputs": [
-        {
-          "type": "error",
-          "ename": "exception",
-          "evalue": "An ancestor raised an exception (ModuleNotFoundError): ",
-          "traceback": null
-        }
-      ],
+      "outputs": [],
       "console": []
     }
   ]

@@ -2,7 +2,21 @@
 
 This repository contains the workshop notebooks and marimo app for the DQC tutorial.
 
-## Setup (recommended)
+## Quick Start (Sandbox Mode)
+
+No installation required! Dependencies are bundled with the notebook.
+
+```bash
+UV_INDEX_STRATEGY=unsafe-best-match marimo edit --sandbox tutorial_marimo.py
+```
+
+Or using uv:
+
+```bash
+UV_INDEX_STRATEGY=unsafe-best-match uv run marimo edit --sandbox tutorial_marimo.py
+```
+
+## Setup (recommended for development)
 
 This project is configured to use the pip installer script:
 `install_tutorial_dependencies_pip.py`
