@@ -6,7 +6,7 @@ execute:
 
 ::: {.light-content}
 ```{python}
-#| label: import-qc-light-theme
+#| label: mpl-light
 #| echo: false
 import sys
 sys.path.insert(0, "./templates")
@@ -17,7 +17,7 @@ qc_light_mpl.apply() # doesn't seem to work
 
 ::: {.dark-content}
 ```{python}
-#| label: import-qc-dark-theme
+#| label: mpl-dark
 #| echo: false
 import sys
 sys.path.insert(0, "./templates")
@@ -81,7 +81,7 @@ The circuit that generates this state is simple and involves two steps:
 2. Apply $\mathrm{CX}(0 \to i)$ for $i = 1, \dots, n-1$.
 
 ```{python}
-# Create GHZ circuits and visualize growth with n
+#| label: ghz-function
 from qiskit import QuantumCircuit
 
 def ghz_circuit(n: int, measure: bool = True) -> QuantumCircuit:
@@ -98,18 +98,21 @@ def ghz_circuit(n: int, measure: bool = True) -> QuantumCircuit:
 ### GHZ Circuit (n = 3)
 
 ```{python}
+#| label: ghz-n3
 ghz_circuit(3, measure=False).draw("mpl")
 ```
 
 ### GHZ Circuit (n = 5)
 
 ```{python}
+#| label: ghz-n5
 ghz_circuit(5, measure=False).draw("mpl")
 ```
 
 ### GHZ Circuit (n = 8)
 
 ```{python}
+#| label: ghz-n8
 ghz_circuit(8, measure=False).draw("mpl")
 ```
 
@@ -157,6 +160,7 @@ In the following cells, for each circuit size, we:
 We start by defining which circuit sizes we want to sweep over and testing the IBM simulator:
 
 ```{python}
+#| label: config-params
 # Config
 N_LIST = [3, 4, 6, 8, 10]  # Circuit Sizes to Sweep Over
 SHOTS = 2048
@@ -164,6 +168,7 @@ SEED = 1234
 ```
 
 ```{python}
+#| label: ibm-setup
 # Monolithic validation path: transpile GHZ to Fake IBM hardware and simulate with Aer.
 from qiskit import transpile
 from qiskit_aer import AerSimulator
@@ -217,6 +222,9 @@ for _n in N_LIST:
 
 ### Simulate Distributed Circuits
 
+```{python}
+#| label: run-aer-validation
+
 Next, we run the same circuit on the Bosonic simulator:
 
 ```{python}
@@ -245,6 +253,7 @@ def compile_bosonic_circuit(qc, n, k_modules):
 ```
 
 ```{python}
+#| label: run-bosonic-ghz
 def run_bosonic_ghz(n, shots=SHOTS, traps=2):
     qc = ghz_circuit(n)
     tqc = compile_bosonic_circuit(qc, n, traps)
@@ -267,6 +276,7 @@ for _n in N_LIST:
 Now we graph the fidelity proxy score to visualize how simulator correctness scales with circuit size:
 
 ```{python}
+#| label: fidelity-proxy-plot
 # Compare fidelity proxy for monolithic vs Bosonic paths across N_LIST.
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -319,6 +329,7 @@ Going up in 5's for each $n$, we:
 To keep the comparison fair, we use a single metric engine (`GateStatistics.stats`) for both paths so metric definitions stay consistent. The source is under `qiskit-transpiler/gate_statistics.py`.
 
 ```{python}
+#| label: plot-functions
 def plot_metric_grid(
     df,
     metric_pairs,
@@ -388,6 +399,7 @@ def plot_two_series_by_scenario(
 ```
 
 ```{python}
+#| label: metrics-setup
 from bosonic_sdk.gate_statistics import GateStatistics
 PLOT_METRICS = [('depth', 'Depth'), ('two_qubit_depth', 'Two-Qubit Layer Depth'), ('two_qubit_count', 'Two-Qubit Gate Count'), ('total_ops', 'Total Ops')]
 N_LIST_1 = list(range(5, 126, 5))
@@ -436,6 +448,7 @@ def qiskit_structural_metrics(qc):
 METRIC_REGISTRY = {'n_qubits': lambda s, g, q: s['n_qubits'], 'n_clbits': lambda s, g, q: s['n_clbits'], 'total_ops': lambda s, g, q: s['total_ops'], 'depth': lambda s, g, q: s['depth'], 'gate_counts': lambda s, g, q: s['gate_counts'], 'basis_gates': lambda s, g, q: s['basis_gates'], 'measure_count': lambda s, g, q: q['measure_count'], 'reset_count': lambda s, g, q: q['reset_count'], 'barrier_count': lambda s, g, q: q['barrier_count'], 'local_gate_count': lambda s, g, q: s['local_gate_count'], 'remote_gate_count': lambda s, g, q: s['remote_gate_count'], 'total_remote_gates': lambda s, g, q: s['total_remote_gates'], 'qubit_teleportation_count': lambda s, g, q: s['qubit_teleportation_count'], 'n_classical_gates': lambda s, g, q: s['n_classical_gates'], 'single_qubit_count': lambda s, g, q: q['single_qubit_count'], 'two_qubit_count': lambda s, g, q: q['two_qubit_count'], 'multi_qubit_count': lambda s, g, q: q['multi_qubit_count'], 'two_qubit_depth': lambda s, g, q: q['two_qubit_depth'], 'remote_link_count': lambda s, g, q: g.get('remote_link_psi_minus', 0) + g.get('remote_link_psi_plus', 0)}
 
 def extract_metrics(qc, metric_registry, metric_pairs):
+#| label: extract-metrics
     stats = GateStatistics.stats(CircuitConverters.from_qiskit(qc))
     gate_counts = stats['gate_counts']
     qiskit_metrics = qiskit_structural_metrics(qc)
@@ -453,6 +466,7 @@ def selected_gate_metrics(qc, metric_pairs=PLOT_METRICS):
 ```
 
 ```{python}
+#| label: complexity-collect
 _records = []
 for _n in N_LIST_1:
     _qc = ghz_circuit(_n)
@@ -469,6 +483,7 @@ compile_bosonic = compile_bosonic_circuit
 ```
 
 ```{python}
+#| label: plot-complexity
 plot_metric_grid(
     df_complexity,
     metric_pairs=PLOT_METRICS,
@@ -545,6 +560,7 @@ $$
 We start by defining the hardware parameters used in this model.
 
 ```{python}
+#| label: model-config
 # Model Configuration, here we choose all of the parameters we will use in our model.
 SHOTS_2 = 1024
 N_LIST_2 = list(range(5, 126, 5))
@@ -569,6 +585,7 @@ IBM_OPT_LEVEL_GROWTH = 1
 With our metrics defined, we now implement helper functions for each equation component and evaluate the model for each circuit size and hardware scenario:
 
 ```{python}
+#| label: tts-functions
 def distributed_trap_count(n, qubits_per_trap=QUBITS_PER_TRAP_1):
     """Minimum traps needed so each trap holds <= qubits_per_trap."""
     return module_count(n, qubits_per_trap)
@@ -696,6 +713,7 @@ def build_tts_row(n, scenario, k_modules, qc_comp=None, exc=None):
 ```
 
 ```{python}
+#| label: tts-collect
 _records = []
 for _n in N_LIST_2:
     for _scenario in SCENARIOS:
@@ -709,6 +727,7 @@ df_tts = pd.DataFrame(_records)
 ```
 
 ```{python}
+#| label: plot-tts
 plot_two_series_by_scenario(
     df_tts,
     scenario_order=['monolithic', 'distributed'],
@@ -751,6 +770,7 @@ For each scenario (`monolithic`, `distributed`), we:
 3. Plot projected complexity and projected `TTS_shots` on log scales.
 
 ```{python}
+#| label: extrapolation-setup
 import numpy as np
 N_EXTRAP = np.unique(np.logspace(0, 5, 24).astype(int)).tolist()
 
@@ -811,6 +831,7 @@ df_proj = pd.DataFrame(_proj_rows)
 We now plot extrapolated results on log-log axes. On a log-log plot, straight lines indicate power-law-like scaling behavior over the displayed range.
 
 ```{python}
+#| label: plot-extrapolation
 if df_proj.empty:
     raise RuntimeError('df_proj is missing or empty. Run the extrapolation-fit cell first.')
 _scenario_labels = {'monolithic': 'Monolithic (IBM fake)', 'distributed': 'Distributed (Bosonic, traps=ceil(n/128))'}
@@ -883,6 +904,7 @@ Start in the cell below by defining your circuit! The only requirement is to add
 # Build Your Own Experiment
 
 ```{python}
+#| label: user-circuit
 YOUR_N_LIST = [9, 18, 27, 36, 45]
 YOUR_N_EXTRAP = np.unique(np.logspace(0, 5, 24).astype(int)).tolist()
 YOUR_BOSONIC_QUBITS_PER_MODULE = QUBITS_PER_TRAP_1
@@ -910,6 +932,8 @@ def circuit_fn(n: int):
 ```{python}
 ## These are a list of available metrics to plot, you do not need to edit this cell it serves only as a library of available metrics. 
 
+```{python}
+#| label: user-metrics-lib
 YOUR_METRIC_REGISTRY = {
     'depth': lambda s, g, q: s['depth'],
     'two_qubit_depth': lambda s, g, q: q['two_qubit_depth'],
@@ -939,6 +963,7 @@ YOUR_METRIC_LABELS = {
 ```
 
 ```{python}
+#| label: user-metrics-select
 # Here you can adjust the list "YOUR_METRICS_TO_PLOT" to choose which metrics you would like to plot! 
 YOUR_METRICS_TO_PLOT = ['two_qubit_count', 'total_ops']
 
@@ -960,6 +985,7 @@ def extract_your_metrics(qc, metric_keys=YOUR_METRICS_TO_PLOT):
 ```
 
 ```{python}
+#| label: user-collect-metrics
 your_rows = []
 for _n in YOUR_N_LIST:
     _qc = circuit_fn(_n)
@@ -981,6 +1007,7 @@ df_your = pd.DataFrame(your_rows)
 ```
 
 ```{python}
+#| label: user-plot-metrics
 plot_metric_grid(
     df_your,
     metric_pairs=YOUR_PLOT_METRIC_PAIRS,
@@ -1009,6 +1036,7 @@ plot_two_series_by_scenario(
 ```
 
 ```{python}
+#| label: user-extrapolation
 _proj_rows = []
 for _scenario in ['monolithic', 'distributed']:
     _sub = df_your[df_your['scenario'] == _scenario].sort_values('n')
