@@ -1,43 +1,8 @@
 ---
-title: Tutorial Marimo
-marimo-version: 0.23.2
-width: medium
-css_file: templates/qc-theme.css
-header: |-
-  # /// script
-  # requires-python = ">=3.10"
-  # dependencies = [
-  #     "ipykernel",
-  #     "marimo",
-  #     "pandas",
-  #     "matplotlib",
-  #     "qiskit>=1.0",
-  #     "qiskit-aer",
-  #     "qiskit-ibm-runtime",
-  #     "bosonic-sdk-felix",
-  # ]
-  #
-  # [[tool.uv.index]]
-  # name = "test-pypi"
-  # url = "https://test.pypi.org/simple/"
-  # default = false
-  #
-  # [[tool.uv.index]]
-  # name = "pypi"
-  # url = "https://pypi.org/simple/"
-  # default = true
-  #
-  # [tool.uv.sources]
-  # bosonic-sdk-felix = { index = "test-pypi" }
-
-  # [tool.uv]
-  # index-strategy = "unsafe-best-match"
-  # ///
+title: Tutorial Quarto
+execute:
+  cache: true
 ---
-
-```python {.marimo}
-import marimo as mo
-```
 
 # Setup and Introduction
 
@@ -94,9 +59,8 @@ The circuit that generates this state is simple and involves two steps:
 1. Apply $H$ to qubit $0$.
 2. Apply $\mathrm{CX}(0 \to i)$ for $i = 1, \dots, n-1$.
 
-```python {.marimo}
+```{python}
 # Create GHZ circuits and visualize growth with n
-from IPython.display import Markdown, display
 from qiskit import QuantumCircuit
 
 def ghz_circuit(n: int, measure: bool = True) -> QuantumCircuit:
@@ -108,10 +72,24 @@ def ghz_circuit(n: int, measure: bool = True) -> QuantumCircuit:
     if measure:
         qc.measure(range(n), range(n))
     return qc
+```
 
-for n in [3, 5, 8]:
-    display(Markdown(f"### GHZ Circuit (n={n})"))
-    display(ghz_circuit(n, measure=False).draw("mpl"))
+### GHZ Circuit (`n = 3`)
+
+```{python}
+ghz_circuit(3, measure=False).draw("mpl")
+```
+
+### GHZ Circuit (`n = 5`)
+
+```{python}
+ghz_circuit(5, measure=False).draw("mpl")
+```
+
+### GHZ Circuit (`n = 8`)
+
+```{python}
+ghz_circuit(8, measure=False).draw("mpl")
 ```
 
 # GHZ Config
@@ -156,14 +134,14 @@ In the following cells, for each circuit size, we:
 
 We start by defining which circuit sizes we want to sweep over and testing the IBM simulator:
 
-```python {.marimo}
+```{python}
 # Config
 N_LIST = [3, 4, 6, 8, 10]  # Circuit Sizes to Sweep Over
 SHOTS = 2048
 SEED = 1234
 ```
 
-```python {.marimo}
+```{python}
 # Monolithic validation path: transpile GHZ to Fake IBM hardware and simulate with Aer.
 from qiskit import transpile
 from qiskit_aer import AerSimulator
@@ -217,12 +195,12 @@ for _n in N_LIST:
 
 ### Next, we run the same circuit on the Bosonic simulator
 
-```python {.marimo}
+```{python}
 from bosonic_converters import CircuitConverters
 from bosonic_sdk import BosonicDistributor, Simulator
 ```
 
-```python {.marimo}
+```{python}
 import math
 
 def module_count(n, qubits_per_module):
@@ -242,7 +220,7 @@ def compile_bosonic_circuit(qc, n, k_modules):
     return CircuitConverters.to_qiskit(distributed.as_monolithic_circuit())
 ```
 
-```python {.marimo}
+```{python}
 def run_bosonic_ghz(n, shots=SHOTS, traps=2):
     qc = ghz_circuit(n)
     tqc = compile_bosonic_circuit(qc, n, traps)
@@ -262,7 +240,7 @@ for _n in N_LIST:
 
 ### Now we graph the fidelity proxy score to visualize how simulator correctness scales with circuit size
 
-```python {.marimo}
+```{python}
 # Compare fidelity proxy for monolithic vs Bosonic paths across N_LIST.
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -314,7 +292,7 @@ Going up in 5's for each $n$, we:
 
 To keep the comparison fair, we use a single metric engine (`GateStatistics.stats`) for both paths so metric definitions stay consistent. The source is under `qiskit-transpiler/gate_statistics.py`.
 
-```python {.marimo}
+```{python}
 def plot_metric_grid(
     df,
     metric_pairs,
@@ -383,7 +361,7 @@ def plot_two_series_by_scenario(
     plt.show()
 ```
 
-```python {.marimo}
+```{python}
 from bosonic_sdk.gate_statistics import GateStatistics
 PLOT_METRICS = [('depth', 'Depth'), ('two_qubit_depth', 'Two-Qubit Layer Depth'), ('two_qubit_count', 'Two-Qubit Gate Count'), ('total_ops', 'Total Ops')]
 N_LIST_1 = list(range(5, 126, 5))
@@ -448,7 +426,7 @@ def selected_gate_metrics(qc, metric_pairs=PLOT_METRICS):
     return extract_metrics(qc, METRIC_REGISTRY, metric_pairs)
 ```
 
-```python {.marimo}
+```{python}
 _records = []
 for _n in N_LIST_1:
     _qc = ghz_circuit(_n)
@@ -464,7 +442,7 @@ df_complexity
 compile_bosonic = compile_bosonic_circuit
 ```
 
-```python {.marimo}
+```{python}
 plot_metric_grid(
     df_complexity,
     metric_pairs=PLOT_METRICS,
@@ -542,7 +520,7 @@ $$
 
 We start by defining the hardware parameters used in this model.
 
-```python {.marimo}
+```{python}
 # Model Configuration, here we choose all of the parameters we will use in our model.
 SHOTS_2 = 1024
 N_LIST_2 = list(range(5, 126, 5))
@@ -564,7 +542,7 @@ IBM_OPT_LEVEL_GROWTH = 1
 
 ### With our metrics defined, we now implement helper functions for each equation component and evaluate the model for each circuit size and hardware scenario.
 
-```python {.marimo}
+```{python}
 def distributed_trap_count(n, qubits_per_trap=QUBITS_PER_TRAP_1):
     """Minimum traps needed so each trap holds <= qubits_per_trap."""
     return module_count(n, qubits_per_trap)
@@ -691,7 +669,7 @@ def build_tts_row(n, scenario, k_modules, qc_comp=None, exc=None):
     return row
 ```
 
-```python {.marimo}
+```{python}
 _records = []
 for _n in N_LIST_2:
     for _scenario in SCENARIOS:
@@ -704,7 +682,7 @@ for _n in N_LIST_2:
 df_tts = pd.DataFrame(_records)
 ```
 
-```python {.marimo}
+```{python}
 plot_two_series_by_scenario(
     df_tts,
     scenario_order=['monolithic', 'distributed'],
@@ -745,7 +723,7 @@ For each scenario (`monolithic`, `distributed`), we:
 2. Use projected `N1, N2, N_meas` in the same TTS model.
 3. Plot projected complexity and projected `TTS_shots` on log scales.
 
-```python {.marimo}
+```{python}
 import numpy as np
 N_EXTRAP = np.unique(np.logspace(0, 5, 24).astype(int)).tolist()
 
@@ -803,7 +781,7 @@ df_proj = pd.DataFrame(_proj_rows)
 
 ### We now plot extrapolated results on log-log axes. On a log-log plot, straight lines indicate power-law-like scaling behavior over the displayed range.
 
-```python {.marimo}
+```{python}
 if df_proj.empty:
     raise RuntimeError('df_proj is missing or empty. Run the extrapolation-fit cell first.')
 _scenario_labels = {'monolithic': 'Monolithic (IBM fake)', 'distributed': 'Distributed (Bosonic, traps=ceil(n/128))'}
@@ -880,7 +858,7 @@ Start in the cell below by defining your circuit! The only requirement is to add
 --------------------------------------------------------------------------------------------------------------------------------------
 # Try It Yourself: Build Your Own Scaling Experiment
 
-```python {.marimo}
+```{python}
 YOUR_N_LIST = [9, 18, 27, 36, 45]
 YOUR_N_EXTRAP = np.unique(np.logspace(0, 5, 24).astype(int)).tolist()
 YOUR_BOSONIC_QUBITS_PER_MODULE = QUBITS_PER_TRAP_1
@@ -905,7 +883,7 @@ def circuit_fn(n: int):
     return _qc
 ```
 
-```python {.marimo}
+```{python}
 ## These are a list of available metrics to plot, you do not need to edit this cell it serves only as a library of available metrics. 
 
 YOUR_METRIC_REGISTRY = {
@@ -936,7 +914,7 @@ YOUR_METRIC_LABELS = {
 }
 ```
 
-```python {.marimo}
+```{python}
 # Here you can adjust the list "YOUR_METRICS_TO_PLOT" to choose which metrics you would like to plot! 
 YOUR_METRICS_TO_PLOT = ['two_qubit_count', 'total_ops']
 
@@ -957,7 +935,7 @@ def extract_your_metrics(qc, metric_keys=YOUR_METRICS_TO_PLOT):
     return extract_metrics(qc, YOUR_METRIC_REGISTRY, metric_pairs)
 ```
 
-```python {.marimo}
+```{python}
 your_rows = []
 for _n in YOUR_N_LIST:
     _qc = circuit_fn(_n)
@@ -978,7 +956,7 @@ for _n in YOUR_N_LIST:
 df_your = pd.DataFrame(your_rows)
 ```
 
-```python {.marimo}
+```{python}
 plot_metric_grid(
     df_your,
     metric_pairs=YOUR_PLOT_METRIC_PAIRS,
@@ -1006,7 +984,7 @@ plot_two_series_by_scenario(
 )
 ```
 
-```python {.marimo}
+```{python}
 _proj_rows = []
 for _scenario in ['monolithic', 'distributed']:
     _sub = df_your[df_your['scenario'] == _scenario].sort_values('n')

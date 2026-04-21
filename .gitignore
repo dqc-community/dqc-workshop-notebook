@@ -11,3 +11,4 @@ __marimo__/session/
 /.quarto/
 **/*.quarto_ipynb
 /_site
+/.jupyter_cache
