@@ -6,7 +6,6 @@ execute:
 
 # Setup and Introduction
 
-
 The goal of the notebook is to compare how distributed quantum computing approaches compare to their monolithic counterparts. To keep scaling behaviour consistent we choose an easy scalable circuit family, GHZ states.
 
 The notebook is split into three main sections:
@@ -74,19 +73,19 @@ def ghz_circuit(n: int, measure: bool = True) -> QuantumCircuit:
     return qc
 ```
 
-### GHZ Circuit (`n = 3`)
+### GHZ Circuit (n = 3)
 
 ```{python}
 ghz_circuit(3, measure=False).draw("mpl")
 ```
 
-### GHZ Circuit (`n = 5`)
+### GHZ Circuit (n = 5)
 
 ```{python}
 ghz_circuit(5, measure=False).draw("mpl")
 ```
 
-### GHZ Circuit (`n = 8`)
+### GHZ Circuit (n = 8)
 
 ```{python}
 ghz_circuit(8, measure=False).draw("mpl")
@@ -99,7 +98,7 @@ We can see that the scaling of our GHZ circuit is pretty trivial. Now that we ha
 - **Circuit size sweep:** `N_LIST` contains the circuit sizes we want to evaluate.
 - **Sampling:** `SHOTS` is the number of measurement samples per circuit.
 - **Randomness:** `SEED` is a random seed for reproducibility.
-<!---->
+
 # Validating the Simulators
 
 Now that we have defined our circuit, the next step to validate our simulators to ensure we are getting reliable results. To do this we run simulations and verify that we recover the expected GHZ outcomes.
@@ -193,7 +192,7 @@ for _n in N_LIST:
     print(f'[IBM-Fake-Sherbrooke] n={_n:2d} depth={_qc_mono.depth():3d} count(0^{_n})={_c0} count(1^{_n})={_c1} proxy={_proxy:.3f}')
 ```
 
-### Next, we run the same circuit on the Bosonic simulator
+Next, we run the same circuit on the Bosonic simulator:
 
 ```{python}
 from bosonic_converters import CircuitConverters
@@ -238,7 +237,7 @@ for _n in N_LIST:
         print(f'[Bosonic] n={_n:2d} ERROR: {e}')
 ```
 
-### Now we graph the fidelity proxy score to visualize how simulator correctness scales with circuit size
+Now we graph the fidelity proxy score to visualize how simulator correctness scales with circuit size:
 
 ```{python}
 # Compare fidelity proxy for monolithic vs Bosonic paths across N_LIST.
@@ -462,8 +461,8 @@ Quantum computation is expensive and error-prone, so we generally want to do as 
 Two-qubit gates are especially important because they are typically slower and noisier than single-qubit gates. That is why we choose `two_qubit_count` and `two_qubit_depth` as our measured metrics.
 
 Connectivity is the biggest culprit for this scaling behaviour. In monolithic nearest-neighbor hardware, non-local interactions require routing through SWAP operations. This routing overhead increases depth and total operation count as circuits grows. In the distributed approach we still have to worry about connectivity but due to having modules as opposed to one big chip scaling is much more managable.
-<!---->
---------------------------------------------------------------------------------------------------------------------------------------
+
+---
 
 # Executing on Real Hardware
 
@@ -709,7 +708,7 @@ At first glance, monolithic IBM-style hardware appears to have much lower time t
 Recall that in the earlier gate analysis we saw that the amount of gates needed in the monolithic system was larger for monolithic systems as well. This suggests that as we grow in circuit size monolithic systems might have a harder time scaling up.
 
 This matters because useful fault-tolerant workloads are expected in regimes far beyond today's small demonstrations, often requiring thousands to tens of thousands of physical qubits depending on the algorithm and error-correction assumptions.
-<!---->
+
 # Extrapolating to Useful Circuit Sizes
 
 The IBM device caps out at 127 qubits, to get around this and avoid expensive simulation we can use the data we have from our current simulation and assume that we would see a similar pattern as we extent to utility scale regimes (assuming that the IBM chip would have the same structure but grow in qubit counts).
@@ -840,23 +839,24 @@ These projections highlight a key scaling challenge for monolithic approaches.
 At small sizes, monolithic circuits with fast native gates can outperform distributed ones by far. As size grows, routing overhead in nearest-neighbor architectures creates fast growth in two-qubit costs and greatly imparcting Time-To-Solution. This is a key challenge monolithic approaches face and why as we try to scale to useful qubit counts the industry is turning to distributed quantum computing.
 
 Distributed systems introduce their own challenges (for example remote entanglement and coordination overhead), but they provide a practical path to larger effective system sizes.
-<!---->
---------------------------------------------------------------------------------------------------------------------------------------
+
+---
 
 # Distributing Circuits
 
 In this notebook we explored how scaling quantum circuits scale between monolithic and distributed architectures stricly in terms of gate counts. However, we neglected one of the biggest advantages that distributed systems have, their ability to run computations in parallel on different modules/QPUs. One can also use this ability to run computations in parallel to run different parts of a circuit at the same time! This is one of the biggest advantages of distributed quantum computing but implementation is not as trivial as one may think. Refer back to the slides to learn more!
-<!---->
---------------------------------------------------------------------------------------------------------------------------------------
+
+---
 
 # Try it Yourself!
 
 You may have noticed that the scaling behaviour for our circuits had the same shape across different metrics. This was due to our choice of using GHZ circuits. As we scaled up we added two exactly one CNOT which made all of our scaling trivial. Below is a sandbox where you can design your own circuit and use all of the tools we have defined to explore scaling using your own circuit!
 
 Start in the cell below by defining your circuit! The only requirement is to add some dependency on the number of qubits (n) so that your circuit has some sort of scaling and is compatabile with all of our functions! This is left as an excercise for your own time or if you get through the notebook earlier than others!
-<!---->
---------------------------------------------------------------------------------------------------------------------------------------
-# Try It Yourself: Build Your Own Scaling Experiment
+
+---
+
+# Try It Yourself
 
 ```{python}
 YOUR_N_LIST = [9, 18, 27, 36, 45]
