@@ -5,33 +5,42 @@
 #     "marimo",
 #     "pandas",
 #     "matplotlib",
+#     "pylatexenc",
 #     "qiskit>=1.0",
 #     "qiskit-aer",
 #     "qiskit-ibm-runtime",
 #     "bosonic-sdk-felix",
+#     "bosonic-converters",
+#     "bosonic-sdk",
+#     "jupyter-cache>=1.0.1",
 # ]
-#
+
+# [project.optional-dependencies]
+# comparison = ["bosonic-sdk-felix"]
+
 # [[tool.uv.index]]
 # name = "test-pypi"
 # url = "https://test.pypi.org/simple/"
 # default = false
-#
+
 # [[tool.uv.index]]
 # name = "pypi"
 # url = "https://pypi.org/simple/"
 # default = true
-#
+
 # [tool.uv.sources]
 # bosonic-sdk-felix = { index = "test-pypi" }
+# bosonic-converters = { index = "test-pypi" }
+# bosonic-sdk = { index = "test-pypi" }
+
+# [tool.uv]
+# index-strategy = "unsafe-best-match"
 # ///
-#
-# NOTE: Run with UV_INDEX_STRATEGY=unsafe-best-match for sandbox mode
-# e.g., UV_INDEX_STRATEGY=unsafe-best-match marimo edit --sandbox tutorial_marimo.py
 
 import marimo
 
-__generated_with = "0.23.1"
-app = marimo.App(width="medium", css_file="templates/qc-theme.css")
+__generated_with = "0.23.2"
+app = marimo.App(width="medium", css_file="templates/qc-theme-marimo.css")
 
 
 @app.cell
@@ -109,9 +118,8 @@ def _(mo):
 
 
 @app.cell
-def _():
+def _(mo):
     # Create GHZ circuits and visualize growth with n
-    from IPython.display import Markdown, display
     from qiskit import QuantumCircuit
 
     def ghz_circuit(n: int, measure: bool = True) -> QuantumCircuit:
@@ -124,9 +132,11 @@ def _():
             qc.measure(range(n), range(n))
         return qc
 
-    for n in [3, 5, 8]:
-        display(Markdown(f"### GHZ Circuit (n={n})"))
-        display(ghz_circuit(n, measure=False).draw("mpl"))
+    def ghz_cell(n: int):
+        fig = ghz_circuit(n, measure=False).draw("mpl")
+        return mo.md(f"### GHZ Circuit (n={n})\n\n{mo.as_html(fig)}")
+
+    [ghz_cell(n) for n in [3, 5, 8]]
     return QuantumCircuit, ghz_circuit
 
 

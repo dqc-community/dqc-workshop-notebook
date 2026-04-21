@@ -1,0 +1,584 @@
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&family=Montserrat:wght@400;700&display=swap");
+
+body {
+    font-family: $font-family-sans-serif;
+    color: $tertiary;
+    line-height: 1.75;
+    -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-family: $font-family-sans-serif;
+    font-weight: 700;
+    color: $primary;
+    letter-spacing: 0.5px;
+}
+
+h1 {
+    font-size: $font-large;
+    margin-top: 38px;
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid $guide;
+}
+
+h2 {
+    font-size: $font-mid;
+    font-weight: 700;
+    color: $secondary;
+    margin-top: 24px;
+    margin-bottom: 9px;
+}
+
+h3 {
+    font-family: $font-family-monospace;
+    font-size: $font-small;
+    font-weight: 500;
+    color: $secondary;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-top: 24px;
+    margin-bottom: 9px;
+}
+
+h4,
+h5,
+h6 {
+    font-family: $font-family-monospace;
+    font-size: $font-small;
+    font-weight: 500;
+    color: $tertiary;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-top: 15px;
+    margin-bottom: 6px;
+}
+
+strong {
+    font-weight: 700;
+    color: $secondary;
+}
+
+pre,
+code {
+    font-family: $font-family-monospace;
+    font-size: $font-mid;
+}
+
+pre {
+    background: $surface;
+    border: none;
+    padding: 12px 16px;
+    line-height: 1.8;
+}
+
+code {
+    background: $surface;
+    color: $secondary;
+    padding: 0.1em 0.4em !important;
+}
+
+.sourceCode {
+    background: $surface;
+    border: none;
+    padding: 14px 16px;
+    line-height: 1.8;
+    overflow-x: auto;
+}
+
+div.sourceCode {
+    border-left: 1px solid $guide !important;
+}
+
+pre.sourceCode,
+div.sourceCode pre,
+.sourceCode code {
+    font-size: $font-mid;
+}
+
+.cell {
+    margin-bottom: 15px;
+}
+
+.cell-code {
+    background: $surface;
+}
+
+.code-copy-button {
+    background: transparent;
+    border: 1px solid $guide;
+    color: $dim;
+    opacity: 0;
+    transition:
+        opacity 120ms ease,
+        color 120ms ease;
+}
+
+.cell:hover .code-copy-button,
+.code-copy-button:focus {
+    opacity: 1;
+}
+
+.code-copy-button:hover {
+    color: $secondary;
+    border-color: $border;
+}
+
+.cell-output {
+    background: $page;
+    border: none;
+    border-left: 1px solid $guide;
+    padding: 12px 16px;
+    margin-top: 0;
+}
+
+.cell-output pre {
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin: 0;
+    font-size: $font-mid;
+    color: $tertiary;
+}
+
+.cell-output code {
+    background: transparent;
+    color: $tertiary;
+    padding: 0;
+}
+
+.cell-output-display {
+    background: transparent;
+}
+
+.quarto-float-caption {
+    font-family: $font-family-monospace;
+    font-size: $font-small;
+    color: $dim;
+    letter-spacing: 0.3px;
+    margin-top: 9px;
+}
+
+.sourceCode span {
+    color: $tertiary;
+}
+.sourceCode .kw {
+    color: $primary;
+    font-weight: 700;
+}
+.sourceCode .cf {
+    color: $secondary;
+    font-weight: 500;
+}
+.sourceCode .ot {
+    color: $secondary;
+    font-weight: 500;
+}
+.sourceCode .op {
+    color: $secondary;
+}
+.sourceCode .fu {
+    color: $secondary;
+}
+.sourceCode .dt {
+    color: $secondary;
+}
+.sourceCode .dv,
+.sourceCode .fl,
+.sourceCode .bn {
+    color: #89aac8;
+}
+.sourceCode .st,
+.sourceCode .ch,
+.sourceCode .ss {
+    color: #d4a87c;
+}
+.sourceCode .im {
+    color: #a992be;
+}
+.sourceCode .bu {
+    color: #8dc0a3;
+}
+.sourceCode .co,
+.sourceCode .do {
+    color: $dim;
+    font-style: italic;
+}
+.sourceCode .in,
+.sourceCode .an {
+    color: #b4b89e;
+}
+.sourceCode .cn {
+    color: $secondary;
+    font-weight: 500;
+}
+.sourceCode .va,
+.sourceCode .at {
+    color: $tertiary;
+}
+.sourceCode .sc {
+    color: #84beb8;
+}
+.sourceCode .er,
+.sourceCode .al {
+    color: $danger;
+}
+
+table {
+    font-family: $font-family-monospace;
+    font-size: $font-small;
+}
+
+table th {
+    font-weight: 500;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: $secondary;
+    border-bottom: 1px solid $border;
+    padding: 6px 9px;
+}
+
+table td {
+    color: $tertiary;
+    letter-spacing: 0.3px;
+    padding: 6px 9px;
+}
+
+table tr:hover {
+    background: $surface;
+}
+
+a {
+    color: $link-color;
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition:
+        color 120ms ease,
+        border-color 120ms ease;
+}
+
+a:hover {
+    color: $link-hover-color;
+    text-decoration: none;
+    border-bottom-color: $link-hover-color;
+}
+
+.callout {
+    background: $page;
+    border: 1px solid $guide;
+    border-left-width: 3px;
+}
+
+.callout-header {
+    background: transparent;
+    align-items: center;
+    padding: 6px 9px !important;
+    gap: 6px;
+}
+
+.callout-icon-container {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0;
+    width: 1.1em !important;
+    height: 1.1em !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    line-height: 1 !important;
+}
+
+.callout-icon {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 1em !important;
+    height: 1em !important;
+    font-size: 1em !important;
+    line-height: 1 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+.callout-icon::before {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    line-height: 1 !important;
+    vertical-align: baseline !important;
+}
+
+.callout-title-container {
+    font-family: $font-family-monospace;
+    font-size: $font-mid;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: $secondary;
+    margin: 0 !important;
+    line-height: 1;
+}
+
+.callout-btn-toggle {
+    margin-left: auto;
+    padding: 0 !important;
+}
+
+.callout-toggle {
+    color: $dim;
+}
+
+.callout-body {
+    font-family: $font-family-sans-serif;
+    font-size: $font-mid;
+    color: $tertiary;
+    line-height: 1.75;
+}
+
+.callout-note {
+    border-left-color: $callout-color-note;
+}
+.callout-note .callout-title-container,
+.callout-note .callout-icon {
+    color: $callout-color-note !important;
+}
+
+.callout-tip {
+    border-left-color: $callout-color-tip;
+}
+.callout-tip .callout-title-container,
+.callout-tip .callout-icon {
+    color: $callout-color-tip !important;
+}
+
+.callout-important {
+    border-left-color: $callout-color-important;
+}
+.callout-important .callout-title-container,
+.callout-important .callout-icon {
+    color: $callout-color-important !important;
+}
+
+.callout-warning {
+    border-left-color: $callout-color-warning;
+}
+.callout-warning .callout-title-container,
+.callout-warning .callout-icon {
+    color: $callout-color-warning !important;
+}
+
+.callout-caution {
+    border-left-color: $callout-color-caution;
+}
+.callout-caution .callout-title-container,
+.callout-caution .callout-icon {
+    color: $callout-color-caution !important;
+}
+
+ul,
+ol {
+    color: $tertiary;
+}
+
+li {
+    margin-bottom: 6px;
+}
+
+blockquote {
+    border-left: 1px solid $border;
+    color: $tertiary;
+    font-style: normal;
+    padding-left: 15px;
+}
+
+blockquote p {
+    color: $tertiary;
+}
+
+::selection {
+    background: $surface;
+    color: $primary;
+}
+
+.quarto-title {
+    margin-bottom: 9px;
+}
+
+.quarto-title .title {
+    border-bottom: none;
+    padding-bottom: 6px;
+    margin-bottom: 6px;
+}
+
+.subtitle {
+    font-family: $font-family-monospace !important;
+    font-size: $font-small !important;
+    letter-spacing: 2.5px;
+    color: $tertiary;
+    text-transform: uppercase;
+    font-weight: 400;
+}
+
+.quarto-title-block {
+    margin-bottom: 38px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid $border;
+}
+
+.quarto-title-meta {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid $guide;
+}
+
+.quarto-title-meta-heading {
+    font-family: $font-family-monospace;
+    font-size: $font-small;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: $dim;
+}
+
+.quarto-title-meta-contents {
+    font-family: $font-family-monospace;
+    font-size: $font-small;
+    color: $tertiary;
+    letter-spacing: 0.3px;
+}
+
+#TOC {
+    font-family: $font-family-monospace;
+    font-size: $font-small;
+    letter-spacing: 0.5px;
+}
+
+#TOC h2 {
+    font-family: $font-family-monospace;
+    font-size: $font-small;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: $dim;
+    border-bottom: none;
+    margin-bottom: 9px;
+    padding-bottom: 0;
+}
+
+#TOC .nav-link {
+    color: $dim;
+    padding: 3px 0;
+    border-left: none;
+    transition: color 120ms ease;
+}
+
+#TOC .nav-link:hover {
+    color: $secondary !important;
+}
+
+#TOC .nav-link.active {
+    color: $primary !important;
+    font-weight: 500;
+    border-left: none;
+}
+
+.navbar {
+    background: $page;
+    border-bottom: 1px solid $guide;
+    font-family: $font-family-monospace;
+    font-size: $font-small;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+.quarto-color-scheme-toggle {
+    color: $dim;
+    border-bottom: none !important;
+    transition: color 120ms ease;
+}
+
+.quarto-color-scheme-toggle:hover {
+    color: $secondary;
+    border-bottom: none !important;
+}
+
+.nav-tabs {
+    border-bottom: 1px solid $guide;
+}
+
+.nav-tabs .nav-link {
+    font-family: $font-family-monospace;
+    font-size: $font-small;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: $dim;
+    border: none;
+    border-bottom: 1px solid transparent;
+    transition:
+        color 120ms ease,
+        border-color 120ms ease;
+}
+
+.nav-tabs .nav-link:hover {
+    color: $secondary;
+    border-color: transparent;
+}
+
+.nav-tabs .nav-link.active {
+    color: $primary;
+    background: transparent;
+    border-bottom-color: $primary;
+    font-weight: 500;
+}
+
+.badge,
+.alert,
+.btn,
+.card {
+    border-radius: 0;
+}
+
+.card {
+    border: 1px solid $guide;
+}
+
+.progress {
+    background: $surface;
+    height: 3px;
+}
+
+.progress-bar {
+    background: $secondary;
+}
+
+[data-bs-original-title],
+.tippy-box {
+    background: $page;
+    border: 1px solid $border;
+    font-family: $font-family-monospace;
+    font-size: $font-small;
+    color: $primary;
+}
+
+.footer {
+    font-family: $font-family-monospace;
+    font-size: $font-small;
+    color: $dim;
+    border-top: 1px solid $guide;
+    letter-spacing: 1px;
+}
+
+.breadcrumb {
+    font-family: $font-family-monospace;
+    font-size: $font-small;
+    color: $dim;
+}
+
+body.quarto-light .dark-content {
+    display: none;
+}
+body.quarto-dark .light-content {
+    display: none;
+}

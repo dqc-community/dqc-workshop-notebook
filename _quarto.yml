@@ -1,0 +1,22 @@
+project:
+  type: website
+
+website:
+  title: "dqc-workshop"
+  navbar:
+    left:
+      - href: index.qmd
+        text: Home
+      - about.qmd
+      - tutorial.qmd
+
+format:
+  html:
+    theme:
+      light: [cosmo, templates/qc-light-theme.scss]
+      dark: [cosmo, templates/qc-dark-theme.scss]
+    css: styles.css
+    toc: true
+
+
+

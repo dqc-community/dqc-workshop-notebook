@@ -7,3 +7,8 @@ tutorial-venv/
 __marimo__/
 uv.lock
 __marimo__/session/
+
+/.quarto/
+**/*.quarto_ipynb
+/_site
+/.jupyter_cache

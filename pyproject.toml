@@ -14,6 +14,9 @@ dependencies = [
     "qiskit-aer",
     "qiskit-ibm-runtime",
     "bosonic-sdk-felix",
+    "bosonic-converters",
+    "bosonic-sdk",
+    "jupyter-cache>=1.0.1",
 ]
 
 [project.optional-dependencies]
@@ -31,6 +34,8 @@ default = true
 
 [tool.uv.sources]
 bosonic-sdk-felix = { index = "test-pypi" }
+bosonic-converters = { index = "test-pypi" }
+bosonic-sdk = { index = "test-pypi" }
 
 [tool.uv]
 index-strategy = "unsafe-best-match"

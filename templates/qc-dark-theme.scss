@@ -1,0 +1,74 @@
+/*-- scss:defaults --*/
+
+$phi: 1.618;
+$font-size-root: 16px;
+
+$primary: #ffffff;
+$secondary: #999;
+$tertiary: #666;
+$dim: #555;
+$border: #444;
+$guide: #333;
+$surface: #222;
+$page: #1a1a1a;
+
+// Muted accent colors (DATA palette style)
+$danger: #d4a4aa;
+$info: #99b4d8;
+$success: #9dcdb3;
+$warning: #d4b89c;
+$secondary-accent: #8a9aaa;
+
+$font-family-sans-serif: "Montserrat", sans-serif;
+$font-family-monospace: "JetBrains Mono", monospace;
+
+$font-small: 0.5625rem;
+$font-mid: 0.91rem;
+$font-large: 1.47rem;
+
+$font-size-base: $font-mid;
+$h1-font-size: $font-large;
+$h2-font-size: $font-mid;
+$h3-font-size: $font-small;
+$h4-font-size: $font-small;
+$h5-font-size: $font-small;
+$h6-font-size: $font-small;
+
+$body-color: $tertiary;
+$body-bg: $page;
+$line-height-base: 1.75;
+
+$headings-font-weight: 700;
+$headings-color: $primary;
+
+$link-color: $secondary;
+$link-hover-color: $primary;
+$link-decoration: none;
+$link-hover-decoration: none;
+
+$code-color: $secondary;
+$code-font-size: $font-mid;
+$code-bg: $surface;
+$code-block-bg: $surface;
+$code-block-border-left: transparent;
+
+$border-color: $guide;
+$border-radius: 0;
+$enable-rounded: false;
+
+$table-border-color: $guide;
+
+$toc-font-size: $font-small;
+$toc-active-border: $primary;
+$toc-inactive-border: transparent;
+
+$callout-border-width: 3px;
+$callout-color-note: $secondary-accent;
+$callout-color-tip: $success;
+$callout-color-important: $info;
+$callout-color-warning: $warning;
+$callout-color-caution: $danger;
+
+/*-- scss:rules --*/
+
+@import "qc-shared";
