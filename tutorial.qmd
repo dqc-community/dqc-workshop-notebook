@@ -1,8 +1,32 @@
 ---
-title: Tutorial Quarto
+title: Workshop
 execute:
   cache: true
 ---
+
+::: {.light-content}
+```{python}
+#| label: import-qc-light-theme
+#| message: false
+#| echo: false
+import sys
+sys.path.insert(0, "./templates")
+import qc_light_mpl
+qc_light_mpl.apply()
+```
+:::
+
+::: {.dark-content}
+```{python}
+#| label: import-qc-dark-theme
+#| message: false
+#| echo: false
+import sys
+sys.path.insert(0, "./templates")
+import qc_dark_mpl
+qc_dark_mpl.apply()
+```
+:::
 
 # Setup and Introduction
 
@@ -21,7 +45,7 @@ The notebook is split into three main sections:
 Lastly, for reference we will use the following notation:
 - *$n$*: number of qubits
 - "remote" or "cross-module" gates: two-qubit interactions whose endpoints lie in different modules (two qubit gates between qubits in different modules).
-<!---->
+
 # GHZ Circuit Generator
 
 Now that we have installed all dependencies and given an overview of the notebook content, we can start building our test circuit. We use a Greenberger-Horne-Zeilinger (GHZ) state generator. A GHZ state on $n$ qubits is defined as:
@@ -192,6 +216,8 @@ for _n in N_LIST:
     print(f'[IBM-Fake-Sherbrooke] n={_n:2d} depth={_qc_mono.depth():3d} count(0^{_n})={_c0} count(1^{_n})={_c1} proxy={_proxy:.3f}')
 ```
 
+### Simulate Distributed Circuits
+
 Next, we run the same circuit on the Bosonic simulator:
 
 ```{python}
@@ -236,6 +262,8 @@ for _n in N_LIST:
     except Exception as e:
         print(f'[Bosonic] n={_n:2d} ERROR: {e}')
 ```
+
+### Fidelity Proxy
 
 Now we graph the fidelity proxy score to visualize how simulator correctness scales with circuit size:
 
@@ -462,8 +490,6 @@ Two-qubit gates are especially important because they are typically slower and n
 
 Connectivity is the biggest culprit for this scaling behaviour. In monolithic nearest-neighbor hardware, non-local interactions require routing through SWAP operations. This routing overhead increases depth and total operation count as circuits grows. In the distributed approach we still have to worry about connectivity but due to having modules as opposed to one big chip scaling is much more managable.
 
----
-
 # Executing on Real Hardware
 
 So far we have seen how scaling affects the circuit we are implementing. This is useful for building intuition, but what we are really interested in is what execution on real hardware might look like. Accessing real hardware involves provider cost, queue times, and cloud submission overhead. That is worthwhile when we care about running an application circuit, but for the purposes of exploring scaling dynamics it is quite unnessecary. We instead opt to build a simple model for execution time or 'time to solution' that incorporates the metrics we care about.
@@ -539,7 +565,9 @@ GROWTH_SWEEP_MAX_N = 126
 IBM_OPT_LEVEL_GROWTH = 1
 ```
 
-### With our metrics defined, we now implement helper functions for each equation component and evaluate the model for each circuit size and hardware scenario.
+### Different Hardware Backends
+
+With our metrics defined, we now implement helper functions for each equation component and evaluate the model for each circuit size and hardware scenario:
 
 ```{python}
 def distributed_trap_count(n, qubits_per_trap=QUBITS_PER_TRAP_1):
@@ -778,7 +806,9 @@ for _scenario in ['monolithic', 'distributed']:
 df_proj = pd.DataFrame(_proj_rows)
 ```
 
-### We now plot extrapolated results on log-log axes. On a log-log plot, straight lines indicate power-law-like scaling behavior over the displayed range.
+### Extrapolated Results
+
+We now plot extrapolated results on log-log axes. On a log-log plot, straight lines indicate power-law-like scaling behavior over the displayed range.
 
 ```{python}
 if df_proj.empty:
@@ -840,13 +870,9 @@ At small sizes, monolithic circuits with fast native gates can outperform distri
 
 Distributed systems introduce their own challenges (for example remote entanglement and coordination overhead), but they provide a practical path to larger effective system sizes.
 
----
-
 # Distributing Circuits
 
 In this notebook we explored how scaling quantum circuits scale between monolithic and distributed architectures stricly in terms of gate counts. However, we neglected one of the biggest advantages that distributed systems have, their ability to run computations in parallel on different modules/QPUs. One can also use this ability to run computations in parallel to run different parts of a circuit at the same time! This is one of the biggest advantages of distributed quantum computing but implementation is not as trivial as one may think. Refer back to the slides to learn more!
-
----
 
 # Try it Yourself!
 
@@ -854,9 +880,7 @@ You may have noticed that the scaling behaviour for our circuits had the same sh
 
 Start in the cell below by defining your circuit! The only requirement is to add some dependency on the number of qubits (n) so that your circuit has some sort of scaling and is compatabile with all of our functions! This is left as an excercise for your own time or if you get through the notebook earlier than others!
 
----
-
-# Try It Yourself
+# Build Your Own Experiment
 
 ```{python}
 YOUR_N_LIST = [9, 18, 27, 36, 45]

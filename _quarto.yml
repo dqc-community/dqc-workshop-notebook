@@ -13,8 +13,8 @@ website:
 format:
   html:
     theme:
-      light: [cosmo, qc-light-theme.scss]
-      dark: [cosmo, qc-dark-theme.scss]
+      light: [cosmo, templates/qc-light-theme.scss]
+      dark: [cosmo, templates/qc-dark-theme.scss]
     css: styles.css
     toc: true
 
