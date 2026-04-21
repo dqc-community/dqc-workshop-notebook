@@ -7,19 +7,17 @@ execute:
 ::: {.light-content}
 ```{python}
 #| label: import-qc-light-theme
-#| message: false
 #| echo: false
 import sys
 sys.path.insert(0, "./templates")
 import qc_light_mpl
-qc_light_mpl.apply()
+qc_light_mpl.apply() # doesn't seem to work
 ```
 :::
 
 ::: {.dark-content}
 ```{python}
 #| label: import-qc-dark-theme
-#| message: false
 #| echo: false
 import sys
 sys.path.insert(0, "./templates")
@@ -151,6 +149,7 @@ $$
 - $\widehat{F}_{\mathrm{GHZ}}(n) \neq 1$ Indicate that we measured an incorrect bit string without any noise models this means that our simulators are not working as expected .
 
 In the following cells, for each circuit size, we:
+
 - run both simulator paths,
 - print `count(0^n)` and `count(1^n)`,
 - compute and plot the proxy scores.
