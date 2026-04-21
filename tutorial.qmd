@@ -743,6 +743,7 @@ The IBM device caps out at 127 qubits, to get around this and avoid expensive si
 The graphs suggest we see a linear increase in gate counts between monolithic and distributed system. Assuming we continue to scale linearly we can use a line of best fit to extrapolate to the utility scale regime we want to explore.
 
 For each scenario (`monolithic`, `distributed`), we:
+
 1. fit linear trends on transpiled points:
    - `N1(n) ~ a1 * n + b1`
    - `N2(n) ~ a2 * n + b2`
