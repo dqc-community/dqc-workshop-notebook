@@ -266,8 +266,15 @@ def _(mo):
 def _():
     from bosonic_converters import CircuitConverters
     from bosonic_sdk import BosonicDistributor, DisqcoDistributor, Simulator
+    from bosonic_sdk.distributor.distributors.hypergraph_distributor import HypergraphDistributor
 
-    return BosonicDistributor, CircuitConverters, DisqcoDistributor, Simulator
+    return (
+        BosonicDistributor,
+        CircuitConverters,
+        DisqcoDistributor,
+        HypergraphDistributor,
+        Simulator,
+    )
 
 
 @app.cell
@@ -1208,6 +1215,7 @@ def _(
 def _(
     BosonicDistributor,
     DisqcoDistributor,
+    HypergraphDistributor,
     YOUR_BOSONIC_QUBITS_PER_MODULE,
     YOUR_N_LIST,
     build_tts_row,
@@ -1220,6 +1228,7 @@ def _(
 ):
     distributor_list = [
           ('bosonic', BosonicDistributor()),
+          ('hypergraph', HypergraphDistributor()),
           ('disqco', DisqcoDistributor()),
       ]
 
