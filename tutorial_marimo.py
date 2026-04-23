@@ -1342,7 +1342,6 @@ def _(
     _ax.set_title('Projected total ops'); _ax.set_xlabel('n qubits (log scale)'); _ax.set_ylabel('Projected total ops (log scale)')
     _ax.grid(True, which='both', alpha=0.3); _ax.legend()
     plt.tight_layout(); plt.show()
-
     return
 
 
