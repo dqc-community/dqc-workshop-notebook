@@ -1,5 +1,5 @@
 # /// script
-# requires-python = ">=3.10"
+# requires-python = "==3.10.*"
 # dependencies = [
 #     "ipykernel",
 #     "marimo",
@@ -8,7 +8,8 @@
 #     "qiskit>=1.0",
 #     "qiskit-aer",
 #     "qiskit-ibm-runtime",
-#     "bosonic-sdk-felix",
+#     "bosonic-sdk",
+#     "bosonic-disqco",
 # ]
 #
 # [[tool.uv.index]]
@@ -22,7 +23,8 @@
 # default = true
 #
 # [tool.uv.sources]
-# bosonic-sdk-felix = { index = "test-pypi" }
+# bosonic-sdk = { index = "test-pypi" }
+# bosonic-disqco = { index = "test-pypi" }
 # ///
 #
 # NOTE: Run with UV_INDEX_STRATEGY=unsafe-best-match for sandbox mode
@@ -30,7 +32,7 @@
 
 import marimo
 
-__generated_with = "0.23.1"
+__generated_with = "0.23.2"
 app = marimo.App(width="medium", css_file="templates/qc-theme.css")
 
 
@@ -263,28 +265,36 @@ def _(mo):
 @app.cell
 def _():
     from bosonic_converters import CircuitConverters
-    from bosonic_sdk import BosonicDistributor, Simulator
+    from bosonic_sdk import BosonicDistributor, DisqcoDistributor, Simulator
+    from bosonic_sdk.distributor.distributors.hypergraph_distributor import HypergraphDistributor
 
-    return BosonicDistributor, CircuitConverters, Simulator
+    return (
+        BosonicDistributor,
+        CircuitConverters,
+        DisqcoDistributor,
+        HypergraphDistributor,
+        Simulator,
+    )
 
 
 @app.cell
-def _(BosonicDistributor, CircuitConverters):
+def _(CircuitConverters):
     import math
 
     def module_count(n, qubits_per_module):
         """Minimum module count needed to host n qubits at fixed capacity."""
         return max(1, math.ceil(int(n) / int(qubits_per_module)))
 
-    def compile_bosonic_circuit(qc, n, k_modules):
+    def compile_bosonic_circuit(qc, n, k_modules, distributor):
         """Distribute a Qiskit circuit across Bosonic modules and return a Qiskit circuit."""
         internal = CircuitConverters.from_qiskit(qc)
         modules = max(1, int(k_modules))
         ions_per_trap = max(1, math.ceil(int(n) / modules))
-        distributed = BosonicDistributor().distribute(
+        distributed = distributor.distribute(
             internal,
             nodes=modules,
             qubits_per_node=ions_per_trap,
+            lowered=True
         )
         return CircuitConverters.to_qiskit(distributed.as_monolithic_circuit())
 
@@ -293,6 +303,7 @@ def _(BosonicDistributor, CircuitConverters):
 
 @app.cell
 def _(
+    BosonicDistributor,
     N_LIST,
     SHOTS,
     Simulator,
@@ -301,6 +312,7 @@ def _(
     ghz_fidelity_proxy,
 ):
     def run_bosonic_ghz(n, shots=SHOTS, traps=2):
+        distributor = BosonicDistributor()
         qc = ghz_circuit(n)
         tqc = compile_bosonic_circuit(qc, n, traps)
         counts, _ = Simulator().run_counts(tqc.copy(), ignore_c_remote=True, shots=shots)
@@ -534,6 +546,7 @@ def _(CircuitConverters, module_count):
 
 @app.cell
 def _(
+    BosonicDistributor,
     N_LIST_1,
     PLOT_METRICS,
     compile_bosonic_circuit,
@@ -550,7 +563,7 @@ def _(
         _m_mono = selected_gate_metrics(_qc_mono, metric_pairs=PLOT_METRICS)
         _records.append({'scenario': 'monolithic', 'backend': 'IBM-Fake-Sherbrooke', 'n': _n, 'k': 1, **_m_mono})
         _k_dist = distributed_module_count(_n)
-        tqc_bos = compile_bosonic_circuit(_qc, _n, _k_dist)
+        tqc_bos = compile_bosonic_circuit(_qc, _n, _k_dist, BosonicDistributor())
         m_bos = selected_gate_metrics(tqc_bos, metric_pairs=PLOT_METRICS)
         _records.append({'scenario': 'distributed', 'backend': 'Bosonic (128 qubits/module)', 'n': _n, 'k': _k_dist, **m_bos})
     df_complexity = pd.DataFrame(_records)
@@ -694,6 +707,7 @@ def _(mo):
 
 @app.cell
 def _(
+    BosonicDistributor,
     IBM_STYLE_TIMING,
     P_SUCCESS_FLOOR,
     QUBITS_PER_TRAP_1,
@@ -765,7 +779,7 @@ def _(
                 compile_for_shot_model._printed_diag = True
             return qc_mono
         module_count_value = max(1, int(module_count_for_distributed))
-        return compile_bosonic(qc, n, module_count_value)
+        return compile_bosonic(qc, n, module_count_value, BosonicDistributor())
 
     def tts_row_defaults(n, scenario, k_modules):
         return {
@@ -921,6 +935,7 @@ def _(mo):
 
 @app.cell
 def _(
+    BosonicDistributor,
     GROWTH_SWEEP_MAX_N,
     IBM_OPT_LEVEL_GROWTH,
     QUBITS_PER_TRAP_1,
@@ -963,7 +978,7 @@ def _(
         N1_i, N2_i, Nm_i = gate_counts(qc_ibm)
         rows.append({'n': _n, 'scenario': 'monolithic', 'label': f'IBM FakeSherbrooke (opt={IBM_OPT_LEVEL_GROWTH})', 'N1': N1_i, 'N2': N2_i, 'N_meas': Nm_i})
         k_growth = distributed_trap_count(_n)
-        qc_bos = compile_bosonic(qc, _n, k_growth)
+        qc_bos = compile_bosonic(qc, _n, k_growth, BosonicDistributor())
         N1_b, N2_b, Nm_b = gate_counts(qc_bos)
         rows.append({'n': _n, 'scenario': 'distributed', 'label': f'Bosonic (traps=ceil(n/{QUBITS_PER_TRAP_1}))', 'N1': N1_b, 'N2': N2_b, 'N_meas': Nm_b})
     df_growth_sweep = pd.DataFrame(rows)
@@ -1098,15 +1113,16 @@ def _(mo):
     mo.md(r"""
     --------------------------------------------------------------------------------------------------------------------------------------
     # Try It Yourself: Build Your Own Scaling Experiment
+    - here we compare two different distribution plugins: BosonicDistributor (simple naive implementation) and DisqcoDistributor (state of the art algorithm; https://github.com/felix-burt/DISQCO)
     """)
     return
 
 
 @app.cell
-def _(QUBITS_PER_TRAP_1, QuantumCircuit, np):
-    YOUR_N_LIST = [9, 18, 27, 36, 45]
+def _(QuantumCircuit, np):
+    YOUR_N_LIST = range(9,100, 9)
     YOUR_N_EXTRAP = np.unique(np.logspace(0, 5, 24).astype(int)).tolist()
-    YOUR_BOSONIC_QUBITS_PER_MODULE = QUBITS_PER_TRAP_1
+    YOUR_BOSONIC_QUBITS_PER_MODULE = 20
 
     # Default is a Shor 9 Qubit error correcting circuit 
     def circuit_fn(n: int):
@@ -1177,10 +1193,7 @@ def _(
     module_count,
 ):
     # Here you can adjust the list "YOUR_METRICS_TO_PLOT" to choose which metrics you would like to plot! 
-    YOUR_METRICS_TO_PLOT = ['two_qubit_count', 'total_ops']
-
-
-
+    YOUR_METRICS_TO_PLOT = ['two_qubit_count', 'single_qubit_count', 'total_ops']
 
     AVAILABLE_METRICS = list(YOUR_METRIC_REGISTRY.keys())
     for metric in YOUR_METRICS_TO_PLOT:
@@ -1199,7 +1212,94 @@ def _(
 
 
 @app.cell
+def _(fit_linear, math, np, pd, plt, predict_linear):
+    def run_your_benchmark(circuit_fn, n_list, distributor_list, compile_dist_fn, compile_mono_fn, build_tts_fn, extract_metrics_fn, module_count_fn, qubits_per_module):
+        rows = []
+        for n in n_list:
+            qc = circuit_fn(n)
+            qc_mono = compile_mono_fn(qc)
+            print(f"compiling circuit({n}) with IBM monolith")
+            rows.append({
+                **build_tts_fn(n, 'monolithic', 1, qc_comp=qc_mono),
+                'distributor': 'monolithic',
+                'label': 'Monolithic (IBM fake)',
+                **extract_metrics_fn(qc_mono),
+            })
+        for dist_name, distributor in distributor_list:
+            for n in n_list:
+                print(f"compiling circuit({n}) with distributor {distributor}")
+                qc = circuit_fn(n)
+                k = module_count_fn(n)
+                qc_dist = compile_dist_fn(qc, n, k, distributor)
+                rows.append({
+                    **build_tts_fn(n, 'distributed', k, qc_comp=qc_dist),
+                    'distributor': dist_name,
+                    'label': f'Distributed ({dist_name}, k=ceil(n/{qubits_per_module}))',
+                    **extract_metrics_fn(qc_dist),
+                })
+        return pd.DataFrame(rows)
+
+    def plot_your_metrics(df, metric_pairs, qubits_per_module):
+        dist_names = [d for d in df['distributor'].unique() if d != 'monolithic']
+        all_lines = [('monolithic', 'Monolithic (IBM fake)')] + [
+            (d, f'Distributed ({d}, k=ceil(n/{qubits_per_module}))') for d in dist_names
+        ]
+        n_metrics = len(metric_pairs)
+        nrows = math.ceil(n_metrics / 2)
+        fig, axes = plt.subplots(nrows, 2, figsize=(12, 4 * nrows))
+        axes = axes.flatten()
+        for ax, (metric, metric_title) in zip(axes, metric_pairs):
+            for dist_name, label in all_lines:
+                sub = df[df['distributor'] == dist_name].sort_values('n')
+                if not sub.empty:
+                    ax.plot(sub['n'], sub[metric], marker='o', label=label)
+            ax.set_title(metric_title)
+            ax.set_xlabel('n qubits')
+            ax.set_ylabel(metric)
+            ax.grid(True, alpha=0.3)
+        for ax in axes[n_metrics:]:
+            ax.set_visible(False)
+        axes[0].legend()
+        fig.suptitle('Your circuit: selected complexity metrics', y=1.02)
+        plt.tight_layout()
+        plt.show()
+
+    def extrapolate_and_plot(df, n_extrap, qubits_per_module):
+        dist_names = [d for d in df['distributor'].unique() if d != 'monolithic']
+        proj_rows = []
+        n_proj = np.asarray(n_extrap, dtype=float)
+        for dist_name in ['monolithic'] + dist_names:
+            sub = df[df['distributor'] == dist_name].sort_values('n')
+            pt = fit_linear(sub['n'], sub['total_ops'])
+            nt_proj = np.maximum(predict_linear(n_proj, pt), 0.0)
+            for n_val, nt_hat in zip(n_proj, nt_proj):
+                proj_rows.append({'n': int(n_val), 'distributor': dist_name, 'total_ops_hat': float(nt_hat)})
+        df_proj = pd.DataFrame(proj_rows)
+        fig, ax = plt.subplots(figsize=(7, 4.5))
+        for dist_name in ['monolithic'] + dist_names:
+            sub = df_proj[df_proj['distributor'] == dist_name].sort_values('n')
+            label = 'Monolithic (IBM fake)' if dist_name == 'monolithic' else f'Distributed ({dist_name}, k=ceil(n/{qubits_per_module}))'
+            y_tot = sub['total_ops_hat'].replace([np.inf, -np.inf], np.nan).clip(lower=1.0)
+            m_tot = np.isfinite(y_tot)
+            ax.plot(sub.loc[m_tot, 'n'], y_tot[m_tot], marker='o', label=label)
+        ax.set_xscale('log')
+        ax.set_yscale('log')
+        ax.set_title('Projected total ops')
+        ax.set_xlabel('n qubits (log scale)')
+        ax.set_ylabel('Projected total ops (log scale)')
+        ax.grid(True, which='both', alpha=0.3)
+        ax.legend()
+        plt.tight_layout()
+        plt.show()
+
+    return extrapolate_and_plot, plot_your_metrics, run_your_benchmark
+
+
+@app.cell
 def _(
+    BosonicDistributor,
+    DisqcoDistributor,
+    HypergraphDistributor,
     YOUR_BOSONIC_QUBITS_PER_MODULE,
     YOUR_N_LIST,
     build_tts_row,
@@ -1207,125 +1307,47 @@ def _(
     compile_bosonic,
     compile_monolithic_ibm_fake,
     extract_your_metrics,
-    pd,
+    run_your_benchmark,
     your_module_count,
 ):
-    your_rows = []
-    for _n in YOUR_N_LIST:
-        _qc = circuit_fn(_n)
-        _qc_mono = compile_monolithic_ibm_fake(_qc)
-        _m_mono = extract_your_metrics(_qc_mono)
-        your_rows.append({
-            **build_tts_row(_n, 'monolithic', 1, qc_comp=_qc_mono),
-            **_m_mono,
-        })
-        _k_dist = your_module_count(_n)
-        qc_dist = compile_bosonic(_qc, _n, _k_dist)
-        m_dist = extract_your_metrics(qc_dist)
-        your_rows.append({
-            **build_tts_row(_n, 'distributed', _k_dist, qc_comp=qc_dist),
-            'label': f'Distributed (Bosonic, k=ceil(n/{YOUR_BOSONIC_QUBITS_PER_MODULE}))',
-            **m_dist,
-        })
-    df_your = pd.DataFrame(your_rows)
+    distributor_list = [
+        ('bosonic', BosonicDistributor()),
+        ('hypergraph', HypergraphDistributor()),
+        ('disqco', DisqcoDistributor()),
+    ]
+    df_your = run_your_benchmark(
+        circuit_fn=circuit_fn,
+        n_list=YOUR_N_LIST,
+        distributor_list=distributor_list,
+        compile_dist_fn=compile_bosonic,
+        compile_mono_fn=compile_monolithic_ibm_fake,
+        build_tts_fn=build_tts_row,
+        extract_metrics_fn=extract_your_metrics,
+        module_count_fn=your_module_count,
+        qubits_per_module=YOUR_BOSONIC_QUBITS_PER_MODULE,
+    )
     return (df_your,)
 
 
 @app.cell
 def _(
+    YOUR_BOSONIC_QUBITS_PER_MODULE,
     YOUR_PLOT_METRIC_PAIRS,
     df_your,
-    plot_metric_grid,
-    plot_two_series_by_scenario,
+    plot_your_metrics,
 ):
-    plot_metric_grid(
-        df_your,
-        metric_pairs=YOUR_PLOT_METRIC_PAIRS,
-        scenario_order=['monolithic', 'distributed'],
-        scenario_labels={
-            'monolithic': 'Monolithic (IBM fake)',
-            'distributed': df_your[df_your['scenario'] == 'distributed'].sort_values('n')['label'].iloc[0],
-        },
-        title='Your circuit: selected complexity metrics',
-        y_label_mode='metric',
-    )
-    plot_two_series_by_scenario(
-        df_your,
-        scenario_order=['monolithic', 'distributed'],
-        scenario_labels={
-            'monolithic': 'Monolithic (IBM fake)',
-            'distributed': df_your[df_your['scenario'] == 'distributed'].sort_values('n')['label'].iloc[0],
-        },
-        left_col='T_shot',
-        right_col='TTS_shots',
-        left_title='Your circuit: T_shot vs n',
-        right_title='Your circuit: success-adjusted TTS_shots vs n',
-        left_ylabel='T_shot (s)',
-        right_ylabel='TTS_shots (s)',
-    )
+    plot_your_metrics(df_your, YOUR_PLOT_METRIC_PAIRS, YOUR_BOSONIC_QUBITS_PER_MODULE)
     return
 
 
 @app.cell
 def _(
-    SHOTS_2,
-    TTS_PLOT_MAX,
-    TTS_from_shots,
-    T_shot_from_counts,
     YOUR_BOSONIC_QUBITS_PER_MODULE,
     YOUR_N_EXTRAP,
     df_your,
-    fit_linear,
-    np,
-    pd,
-    plt,
-    predict_linear,
-    shot_success_probability,
-    your_module_count,
+    extrapolate_and_plot,
 ):
-    _proj_rows = []
-    for _scenario in ['monolithic', 'distributed']:
-        _sub = df_your[df_your['scenario'] == _scenario].sort_values('n')
-        _p1 = fit_linear(_sub['n'], _sub['N1'])
-        _p2 = fit_linear(_sub['n'], _sub['N2'])
-        _pm = fit_linear(_sub['n'], _sub['N_meas'])
-        _n_proj = np.asarray(YOUR_N_EXTRAP, dtype=float)
-        _n1_proj = np.maximum(predict_linear(_n_proj, _p1), 0.0)
-        _n2_proj = np.maximum(predict_linear(_n_proj, _p2), 0.0)
-        _nm_proj = np.maximum(predict_linear(_n_proj, _pm), 0.0)
-        for _n_val, _n1_hat, _n2_hat, _nm_hat in zip(_n_proj, _n1_proj, _n2_proj, _nm_proj):
-            _k_modules = 1 if _scenario == 'monolithic' else your_module_count(_n_val)
-            _p_succ_hat = shot_success_probability(_n1_hat, _n2_hat, scenario=_scenario)
-            _t_shot_hat = T_shot_from_counts(_n1_hat, _n2_hat, N_meas=_nm_hat, scenario=_scenario)
-            _tts_hat = TTS_from_shots(_t_shot_hat, p_success=_p_succ_hat, shots=SHOTS_2)
-            _proj_rows.append({'n': int(_n_val), 'scenario': _scenario, 'N2_hat': float(_n2_hat), 'TTS_shots_hat': float(_tts_hat)})
-    df_your_proj = pd.DataFrame(_proj_rows)
-    _fig, _axes = plt.subplots(1, 2, figsize=(14, 4.5))
-    for _scenario in ['monolithic', 'distributed']:
-        _sub = df_your_proj[df_your_proj['scenario'] == _scenario].sort_values('n')
-        _label = 'Monolithic (IBM fake)' if _scenario == 'monolithic' else f'Distributed (Bosonic, k=ceil(n/{YOUR_BOSONIC_QUBITS_PER_MODULE}))'
-        y_n2 = _sub['N2_hat'].replace([np.inf, -np.inf], np.nan).clip(lower=1.0)
-        m_n2 = np.isfinite(y_n2)
-        _axes[0].plot(_sub.loc[m_n2, 'n'], y_n2[m_n2], marker='o', label=_label)
-        y_tts = _sub['TTS_shots_hat'].replace([np.inf, -np.inf], np.nan)
-        m_tts = np.isfinite(y_tts) & (y_tts > 0) & (y_tts <= TTS_PLOT_MAX)
-        _axes[1].plot(_sub.loc[m_tts, 'n'], y_tts[m_tts], marker='o', label=_label)
-    _axes[0].set_xscale('log')
-    _axes[0].set_yscale('log')
-    _axes[0].set_title('Your extrapolation: projected 2Q count')
-    _axes[0].set_xlabel('n qubits (log scale)')
-    _axes[0].set_ylabel('Projected 2Q gate count (log scale)')
-    _axes[0].grid(True, which='both', alpha=0.3)
-    _axes[0].legend()
-    _axes[1].set_xscale('log')
-    _axes[1].set_yscale('log')
-    _axes[1].set_title('Your extrapolation: projected Time to Solution')
-    _axes[1].set_xlabel('n qubits (log scale)')
-    _axes[1].set_ylabel('Projected time to solution (s, log scale)')
-    _axes[1].grid(True, which='both', alpha=0.3)
-    _axes[1].legend()
-    plt.tight_layout()
-    plt.show()
+    extrapolate_and_plot(df_your, YOUR_N_EXTRAP, YOUR_BOSONIC_QUBITS_PER_MODULE)
     return
 
 

@@ -5,5 +5,7 @@ tutorial-venv/
 .deps/
 .ipynb_checkpoints/
 __marimo__/
-uv.lock
 __marimo__/session/
+.jupyter_cache/
+.quarto/
+_site/
