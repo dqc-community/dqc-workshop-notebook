@@ -264,9 +264,14 @@ def _(mo):
 
 @app.cell
 def _():
+    import sys
     from bosonic_converters import CircuitConverters
     from bosonic_sdk import BosonicDistributor, DisqcoDistributor, Simulator
-    from bosonic_sdk.distributor.distributors.hypergraph_distributor import HypergraphDistributor
+
+    if sys.platform != 'win32':
+        from bosonic_sdk.distributor.distributors.hypergraph_distributor import HypergraphDistributor
+    else:
+        HypergraphDistributor = None
 
     return (
         BosonicDistributor,
@@ -1312,9 +1317,10 @@ def _(
 ):
     distributor_list = [
         ('bosonic', BosonicDistributor()),
-        ('hypergraph', HypergraphDistributor()),
         ('disqco', DisqcoDistributor()),
     ]
+    if HypergraphDistributor is not None:
+        distributor_list.append(('hypergraph', HypergraphDistributor()))
     df_your = run_your_benchmark(
         circuit_fn=circuit_fn,
         n_list=YOUR_N_LIST,
