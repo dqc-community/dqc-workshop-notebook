@@ -1212,6 +1212,90 @@ def _(
 
 
 @app.cell
+def _(fit_linear, math, np, pd, plt, predict_linear):
+    def run_your_benchmark(circuit_fn, n_list, distributor_list, compile_dist_fn, compile_mono_fn, build_tts_fn, extract_metrics_fn, module_count_fn, qubits_per_module):
+        rows = []
+        for n in n_list:
+            qc = circuit_fn(n)
+            qc_mono = compile_mono_fn(qc)
+            print(f"compiling circuit({n}) with IBM monolith")
+            rows.append({
+                **build_tts_fn(n, 'monolithic', 1, qc_comp=qc_mono),
+                'distributor': 'monolithic',
+                'label': 'Monolithic (IBM fake)',
+                **extract_metrics_fn(qc_mono),
+            })
+        for dist_name, distributor in distributor_list:
+            for n in n_list:
+                print(f"compiling circuit({n}) with distributor {distributor}")
+                qc = circuit_fn(n)
+                k = module_count_fn(n)
+                qc_dist = compile_dist_fn(qc, n, k, distributor)
+                rows.append({
+                    **build_tts_fn(n, 'distributed', k, qc_comp=qc_dist),
+                    'distributor': dist_name,
+                    'label': f'Distributed ({dist_name}, k=ceil(n/{qubits_per_module}))',
+                    **extract_metrics_fn(qc_dist),
+                })
+        return pd.DataFrame(rows)
+
+    def plot_your_metrics(df, metric_pairs, qubits_per_module):
+        dist_names = [d for d in df['distributor'].unique() if d != 'monolithic']
+        all_lines = [('monolithic', 'Monolithic (IBM fake)')] + [
+            (d, f'Distributed ({d}, k=ceil(n/{qubits_per_module}))') for d in dist_names
+        ]
+        n_metrics = len(metric_pairs)
+        nrows = math.ceil(n_metrics / 2)
+        fig, axes = plt.subplots(nrows, 2, figsize=(12, 4 * nrows))
+        axes = axes.flatten()
+        for ax, (metric, metric_title) in zip(axes, metric_pairs):
+            for dist_name, label in all_lines:
+                sub = df[df['distributor'] == dist_name].sort_values('n')
+                if not sub.empty:
+                    ax.plot(sub['n'], sub[metric], marker='o', label=label)
+            ax.set_title(metric_title)
+            ax.set_xlabel('n qubits')
+            ax.set_ylabel(metric)
+            ax.grid(True, alpha=0.3)
+        for ax in axes[n_metrics:]:
+            ax.set_visible(False)
+        axes[0].legend()
+        fig.suptitle('Your circuit: selected complexity metrics', y=1.02)
+        plt.tight_layout()
+        plt.show()
+
+    def extrapolate_and_plot(df, n_extrap, qubits_per_module):
+        dist_names = [d for d in df['distributor'].unique() if d != 'monolithic']
+        proj_rows = []
+        n_proj = np.asarray(n_extrap, dtype=float)
+        for dist_name in ['monolithic'] + dist_names:
+            sub = df[df['distributor'] == dist_name].sort_values('n')
+            pt = fit_linear(sub['n'], sub['total_ops'])
+            nt_proj = np.maximum(predict_linear(n_proj, pt), 0.0)
+            for n_val, nt_hat in zip(n_proj, nt_proj):
+                proj_rows.append({'n': int(n_val), 'distributor': dist_name, 'total_ops_hat': float(nt_hat)})
+        df_proj = pd.DataFrame(proj_rows)
+        fig, ax = plt.subplots(figsize=(7, 4.5))
+        for dist_name in ['monolithic'] + dist_names:
+            sub = df_proj[df_proj['distributor'] == dist_name].sort_values('n')
+            label = 'Monolithic (IBM fake)' if dist_name == 'monolithic' else f'Distributed ({dist_name}, k=ceil(n/{qubits_per_module}))'
+            y_tot = sub['total_ops_hat'].replace([np.inf, -np.inf], np.nan).clip(lower=1.0)
+            m_tot = np.isfinite(y_tot)
+            ax.plot(sub.loc[m_tot, 'n'], y_tot[m_tot], marker='o', label=label)
+        ax.set_xscale('log')
+        ax.set_yscale('log')
+        ax.set_title('Projected total ops')
+        ax.set_xlabel('n qubits (log scale)')
+        ax.set_ylabel('Projected total ops (log scale)')
+        ax.grid(True, which='both', alpha=0.3)
+        ax.legend()
+        plt.tight_layout()
+        plt.show()
+
+    return extrapolate_and_plot, plot_your_metrics, run_your_benchmark
+
+
+@app.cell
 def _(
     BosonicDistributor,
     DisqcoDistributor,
@@ -1223,45 +1307,25 @@ def _(
     compile_bosonic,
     compile_monolithic_ibm_fake,
     extract_your_metrics,
-    pd,
+    run_your_benchmark,
     your_module_count,
 ):
     distributor_list = [
-          ('bosonic', BosonicDistributor()),
-          ('hypergraph', HypergraphDistributor()),
-          ('disqco', DisqcoDistributor()),
-      ]
-
-    your_rows = []
-
-    # monolithic once, not per distributor
-    for _n in YOUR_N_LIST:
-      print(f"monolithic _n = {_n}")
-      _qc = circuit_fn(_n)
-      _qc_mono = compile_monolithic_ibm_fake(_qc)
-      _m_mono = extract_your_metrics(_qc_mono)
-      your_rows.append({
-          **build_tts_row(_n, 'monolithic', 1, qc_comp=_qc_mono),
-          'distributor': 'monolithic',
-          'label': 'Monolithic (IBM fake)',
-          **_m_mono,
-      })
-
-    for dist_name, distributor in distributor_list:
-      for _n in YOUR_N_LIST:
-          print(f"{dist_name} _n={_n}")
-          _qc = circuit_fn(_n)
-          _k_dist = your_module_count(_n)
-          qc_dist = compile_bosonic(_qc, _n, _k_dist, distributor)
-          m_dist = extract_your_metrics(qc_dist)
-          your_rows.append({
-              **build_tts_row(_n, 'distributed', _k_dist, qc_comp=qc_dist),
-              'distributor': dist_name,
-              'label': f'Distributed ({dist_name}, k=ceil(n/{YOUR_BOSONIC_QUBITS_PER_MODULE}))',
-              **m_dist,
-          })
-
-    df_your = pd.DataFrame(your_rows)
+        ('bosonic', BosonicDistributor()),
+        ('hypergraph', HypergraphDistributor()),
+        ('disqco', DisqcoDistributor()),
+    ]
+    df_your = run_your_benchmark(
+        circuit_fn=circuit_fn,
+        n_list=YOUR_N_LIST,
+        distributor_list=distributor_list,
+        compile_dist_fn=compile_bosonic,
+        compile_mono_fn=compile_monolithic_ibm_fake,
+        build_tts_fn=build_tts_row,
+        extract_metrics_fn=extract_your_metrics,
+        module_count_fn=your_module_count,
+        qubits_per_module=YOUR_BOSONIC_QUBITS_PER_MODULE,
+    )
     return (df_your,)
 
 
@@ -1270,33 +1334,9 @@ def _(
     YOUR_BOSONIC_QUBITS_PER_MODULE,
     YOUR_PLOT_METRIC_PAIRS,
     df_your,
-    math,
-    plt,
+    plot_your_metrics,
 ):
-    _dist_names = [d for d in df_your['distributor'].unique() if d != 'monolithic']
-    _all_lines = [('monolithic', 'Monolithic (IBM fake)')] + [(d, f'Distributed ({d}, k=ceil(n/{YOUR_BOSONIC_QUBITS_PER_MODULE}))') for d
-    in _dist_names]
-
-    _n_metrics = len(YOUR_PLOT_METRIC_PAIRS)
-    _ncols = 2
-    _nrows = math.ceil(_n_metrics / _ncols)
-    _fig, _axes = plt.subplots(_nrows, _ncols, figsize=(12, 4 * _nrows))
-    _axes = _axes.flatten()
-    for _ax, (_metric, _metric_title) in zip(_axes, YOUR_PLOT_METRIC_PAIRS):
-      for _dist_name, _label in _all_lines:
-          _sub = df_your[df_your['distributor'] == _dist_name].sort_values('n')
-          if not _sub.empty:
-              _ax.plot(_sub['n'], _sub[_metric], marker='o', label=_label)
-      _ax.set_title(_metric_title)
-      _ax.set_xlabel('n qubits')
-      _ax.set_ylabel(_metric)
-      _ax.grid(True, alpha=0.3)
-    for _ax in _axes[_n_metrics:]:
-      _ax.set_visible(False)
-    _axes[0].legend()
-    _fig.suptitle('Your circuit: selected complexity metrics', y=1.02)
-    plt.tight_layout()
-    plt.show()
+    plot_your_metrics(df_your, YOUR_PLOT_METRIC_PAIRS, YOUR_BOSONIC_QUBITS_PER_MODULE)
     return
 
 
@@ -1305,43 +1345,9 @@ def _(
     YOUR_BOSONIC_QUBITS_PER_MODULE,
     YOUR_N_EXTRAP,
     df_your,
-    fit_linear,
-    np,
-    pd,
-    plt,
-    predict_linear,
+    extrapolate_and_plot,
 ):
-    _proj_rows = []
-    _distributor_names = [d for d in df_your['distributor'].unique() if d != 'monolithic']
-
-    _sub_mono = df_your[df_your['distributor'] == 'monolithic'].sort_values('n')
-    _pt = fit_linear(_sub_mono['n'], _sub_mono['total_ops'])
-    _n_proj = np.asarray(YOUR_N_EXTRAP, dtype=float)
-    _nt_proj = np.maximum(predict_linear(_n_proj, _pt), 0.0)
-    for _n_val, _nt_hat in zip(_n_proj, _nt_proj):
-      _proj_rows.append({'n': int(_n_val), 'distributor': 'monolithic', 'total_ops_hat': float(_nt_hat)})
-
-    for _dist_name in _distributor_names:
-      _sub = df_your[df_your['distributor'] == _dist_name].sort_values('n')
-      _pt = fit_linear(_sub['n'], _sub['total_ops'])
-      _nt_proj = np.maximum(predict_linear(_n_proj, _pt), 0.0)
-      for _n_val, _nt_hat in zip(_n_proj, _nt_proj):
-          _proj_rows.append({'n': int(_n_val), 'distributor': _dist_name, 'total_ops_hat': float(_nt_hat)})
-
-    df_your_proj = pd.DataFrame(_proj_rows)
-
-    _fig, _ax = plt.subplots(figsize=(7, 4.5))
-    for _dist_name in ['monolithic'] + _distributor_names:
-      _sub = df_your_proj[df_your_proj['distributor'] == _dist_name].sort_values('n')
-      _label = 'Monolithic (IBM fake)' if _dist_name == 'monolithic' else f'Distributed ({_dist_name}, k=ceil(n/{YOUR_BOSONIC_QUBITS_PER_MODULE}))'
-      y_tot = _sub['total_ops_hat'].replace([np.inf, -np.inf], np.nan).clip(lower=1.0)
-      m_tot = np.isfinite(y_tot)
-      _ax.plot(_sub.loc[m_tot, 'n'], y_tot[m_tot], marker='o', label=_label)
-
-    _ax.set_xscale('log'); _ax.set_yscale('log')
-    _ax.set_title('Projected total ops'); _ax.set_xlabel('n qubits (log scale)'); _ax.set_ylabel('Projected total ops (log scale)')
-    _ax.grid(True, which='both', alpha=0.3); _ax.legend()
-    plt.tight_layout(); plt.show()
+    extrapolate_and_plot(df_your, YOUR_N_EXTRAP, YOUR_BOSONIC_QUBITS_PER_MODULE)
     return
 
 
