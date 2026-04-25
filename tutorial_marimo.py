@@ -67,7 +67,7 @@ with app.setup(hide_code=True):
     }
 
     SCALING_CFG = {
-        'N_LIST': range(5, 126, 5),
+        'N_LIST': range(3, 128),
         'QUBITS_PER_TRAP': 32,
     }
 
@@ -452,24 +452,8 @@ def _():
     return
 
 
-@app.cell
-def _():
-    # the hypergraph partitioning algorithm depends on KaHyPar, which does not run on Windows (https://github.com/kahypar/kahypar#requirements)
-    # import sys
-    # if sys.platform != 'win32':
-    #     from bosonic_sdk.distributor.distributors.hypergraph_distributor import HypergraphDistributor
-    # else:
-    #     HypergraphDistributor = None
-    return
-
-
 @app.function
-def module_count(n, qubits_per_module):
-    """Minimum module count needed to host n qubits at fixed capacity."""
-    return max(1, np.ceil(int(n) / int(qubits_per_module)))
-
-
-@app.function
+# TODO: explain distributor.distribute API (or write docs upstream and show them here)
 def compile_bosonic_circuit(circuit, n, modules, distributor):
     """Distribute a Qiskit circuit across Bosonic modules and return a Qiskit circuit."""
     distributed = distributor.distribute(
@@ -649,7 +633,7 @@ def _():
 
     1. Build the logical GHZ circuit
     2. Compile and measure monolithic metrics
-    3. Compile and measure distributed metrics with dynamic module count $k = \lceil \frac{n}{20}/ 0 \rceil$
+    3. Compile and measure distributed metrics with dynamic module count $k = \lceil \frac{n}{20} \rceil$
     4. Plot each metric against $n$ to compare growth trends
 
     To keep the comparison fair, we use a single metric engine ([`GateStatistics.stats`](https://github.com/dqc-community/dqcomp/blob/5e72e369cc81efcc279ceb63468a10659f01a872/packages/bosonic-sdk/bosonic_sdk/gate_statistics.py#L157-L163)) for both paths so metric definitions stay consistent.
@@ -705,14 +689,6 @@ def qiskit_metrics(circuit):
 
 
 @app.function
-def update_metrics(data, circuit):
-    converted = CircuitConverters.from_qiskit(circuit)
-    data.update(bosonic_sdk.GateStatistics.stats(converted))
-    data.update(qiskit_metrics(circuit))
-    return data
-
-
-@app.function
 def circuit_metrics(circuit):
     converted = CircuitConverters.from_qiskit(circuit)
     data = bosonic_sdk.GateStatistics.stats(converted)
@@ -732,29 +708,6 @@ def _():
     3. Collect metrics about the circuit
     """)
     return
-
-
-@app.cell
-def _(FAKE_IBM_BACKEND):
-    def scaling_ibm(n, constructor=ghz_circuit, backend=FAKE_IBM_BACKEND, **transpile_kwargs):
-        data = {'backend': 'IBM', 'n': n, 'k': 1}
-        circuit = qiskit.transpile(constructor(n), backend=FAKE_IBM_BACKEND, **transpile_kwargs)
-        return update_metrics(data, circuit)
-
-    return (scaling_ibm,)
-
-
-@app.function
-def scaling_bosonic(
-    n, 
-    constructor=ghz_circuit, 
-    qubits_per_trap=SCALING_CFG['QUBITS_PER_TRAP'], 
-    distributor=bosonic_sdk.BosonicDistributor()
-):
-    k = np.ceil(n / qubits_per_trap).astype(int)
-    data = {'backend': 'Bosonic', 'n': n, 'k': k}
-    circuit = compile_bosonic_circuit(constructor(n), n, k, distributor)
-    return update_metrics(data, circuit)
 
 
 @app.cell
@@ -783,66 +736,54 @@ def scale_bosonic(
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    Now we loop over every value of $n$ we defined in our config and collect the results into a `DataFrame`.
+    Now we loop over every value of $n$ we defined in our config, compile a circuit, and collect the circuit metrics into a `DataFrame`.
     """)
     return
 
 
 @app.cell
 def _(scale_ibm):
-    ibm_circuits = [scale_ibm(n, optimization_level=3) for n in mo.status.progress_bar(
-        range(3, 128),
-        title='Compiling',
-        subtitle='Monolithic IBM backend',
-    )]
+    if mo.running_in_notebook():
+        _iter = mo.status.progress_bar(
+            SCALING_CFG['N_LIST'],
+            title='Compiling',
+            subtitle='Monolithic IBM backend',
+        )
+    else:
+        _iter = SCALING_CFG['N_LIST']
+
+    ibm_circuits = [scale_ibm(n, optimization_level=3) for n in _iter]
     return (ibm_circuits,)
 
 
 @app.cell
 def _():
-    bosonic_circuits = [scale_bosonic(n) for n in mo.status.progress_bar(
-        range(3, 128),
-        title='Compiling',
-        subtitle='Distributed Bosonic backend',
-    )]
+    if mo.running_in_notebook():
+        _iter = mo.status.progress_bar(
+            SCALING_CFG['N_LIST'],
+            title='Compiling',
+            subtitle='Distributed Bosonic backend',
+        )
+    else:
+        _iter = SCALING_CFG['N_LIST']
+
+    bosonic_circuits = [scale_bosonic(n) for n in _iter]
     return (bosonic_circuits,)
 
 
 @app.cell
 def _(bosonic_circuits, ibm_circuits):
     circuit_df = pd.DataFrame(ibm_circuits + bosonic_circuits)
-    circuit_df.loc[:, circuit_df.columns != 'circuit']
+    circuit_df.loc[:, circuit_df.columns != 'circuit'] # including circuit column breaks marimo display
     return (circuit_df,)
 
 
 @app.cell
 def _(circuit_df):
-    metrics_df = pd.DataFrame(circuit_df['circuit'].apply(circuit_metrics).tolist())
-    metrics_df
-    return (metrics_df,)
-
-
-@app.cell
-def _(circuit_df, metrics_df):
-    scale_df = circuit_df.join(metrics_df)
-    scale_df.loc[:, scale_df.columns != 'circuit']
-    return (scale_df,)
-
-
-@app.cell
-def _(scale_df):
-    # scaling_df = pd.DataFrame(
-    #     [scaling_ibm(n) for n in SCALING_CFG['N_LIST']] +
-    #     [scaling_bosonic(n) for n in SCALING_CFG['N_LIST']]
-    # )
-    scaling_df = scale_df
+    _metrics = lambda g: pd.Series(circuit_metrics(g['circuit']))
+    scaling_df = circuit_df.join(circuit_df.apply(_metrics, axis=1))
+    scaling_df.loc[:, scaling_df.columns != 'circuit']
     return (scaling_df,)
-
-
-@app.cell
-def _(FAKE_IBM_BACKEND, ibm_circuits):
-    ibm_circuits[100]['circuit'].estimate_duration(target=FAKE_IBM_BACKEND.target)
-    return
 
 
 @app.cell(hide_code=True)
@@ -870,14 +811,17 @@ def _():
 
 
 @app.function
-def plot_scaling_metric(df, metric, title='GHZ Circuit Scaling'):
+def plot_scaling_metric(df, metric, **kwargs):
     for _backend in ['IBM', 'Bosonic']:
         subdf = df[df['backend'] == _backend]
         plt.plot(subdf['n'], subdf[metric], label=_backend)
 
-    plt.title(title)
+    plt.title(kwargs.get('title', 'Scaling Behavior'))
+    
     plt.xlabel('Number of Qubits')
-    plt.ylabel(metric)
+    plt.xscale(kwargs.get('xscale', 'linear'))
+    plt.ylabel(kwargs.get('ylabel', metric))
+    plt.yscale(kwargs.get('yscale', 'linear'))
     plt.legend(title='Backend')
     
     plt.tight_layout()
@@ -886,32 +830,40 @@ def plot_scaling_metric(df, metric, title='GHZ Circuit Scaling'):
 
 @app.cell
 def _(scaling_df):
-    plot_scaling_metric(scaling_df, 'depth')
+    plot_scaling_metric(
+        scaling_df, 'depth', title='GHZ Scaling', ylabel='Circuit Depth'
+    )
     return
 
 
 @app.cell
 def _(scaling_df):
-    plot_scaling_metric(scaling_df, 'two_qubit_count')
+    plot_scaling_metric(
+        scaling_df, 'two_qubit_count', title='GHZ Scaling', ylabel='Two-Qubit Gates'
+    )
     return
 
 
 @app.cell
 def _(scaling_df):
-    plot_scaling_metric(scaling_df, 'single_qubit_count')
+    plot_scaling_metric(
+        scaling_df, 'single_qubit_count', title='GHZ Scaling', ylabel='Single-Qubit Gates'
+    )
     return
 
 
 @app.cell
 def _(scaling_df):
-    plot_scaling_metric(scaling_df, 'qubit_teleportation_count')
+    plot_scaling_metric(
+        scaling_df, 'qubit_teleportation_count', title='GHZ Scaling', ylabel='Teleportation Gates'
+    )
     return
 
 
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    ## Interpreting the Results
+    ## Interpreting Results
 
     Quantum computation is expensive and error-prone, so we generally want to do as little of it as we can get away with. This means we want circuits with fewer operations and shallower paths.
 
@@ -1029,7 +981,8 @@ def _():
 
 
 @app.function
-def tts_data_row(circuit_data, device, shots=TTS_CFG['SHOTS']):
+def tts_data_series(circuit_data, shots=TTS_CFG['SHOTS']):
+    device = TTS_CFG['TIMING'][circuit_data['backend']]
     data = {'log_pr_success': shot_success_log_prob(circuit_data, device=device)}
     data['t_shot'] = T_shot(circuit_data, device=device)
     data['log_t_shot'] = np.log(data['t_shot'])
@@ -1037,9 +990,7 @@ def tts_data_row(circuit_data, device, shots=TTS_CFG['SHOTS']):
     data['log_tts_ideal'] = np.log(shots) + np.log(data['t_shot'])
     data['log_tts'] = data['log_tts_ideal'] - data['log_pr_success']
     data['tts'] = np.exp(data['log_tts'])
-
-    circuit_data.update(data)
-    return circuit_data
+    return pd.Series(data)
 
 
 @app.cell(hide_code=True)
@@ -1051,68 +1002,49 @@ def _():
 
 
 @app.cell
-def _():
-    tts_data_row(
-        scaling_bosonic(3, qubits_per_trap=TTS_CFG['QUBITS_PER_TRAP']), 
-        device=TTS_CFG['BOSONIC_TIMING']
-    )
+def _(scaling_df):
+    _filter_rows = (scaling_df['n'] == 3) & (scaling_df['backend'] == 'IBM')
+    tts_data_series(scaling_df.loc[_filter_rows, :].iloc[0])
     return
 
 
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    All the data that we had before is still there (which means we can reuse our plotting functions!), but now we have time/shot data as well.
-
-    Now let's generate all of our simulation data:
+    All we have to do is apply this function to our existing simulation data.
     """)
     return
 
 
 @app.cell
-def _(scaling_ibm):
-    def generate_tts_data(cfg, constructor):
-        ibm_data = [
-            tts_data_row(
-                scaling_ibm(
-                    n, 
-                    constructor=constructor, 
-                    optimization_level=cfg['IBM_OPTIMIZATION_LEVEL']
-                ),
-                device=cfg['IBM_TIMING'],
-            ) for n in cfg['N_LIST']
-        ]
-        bosonic_data = [
-            tts_data_row(
-                scaling_bosonic(
-                    n, 
-                    constructor=constructor, 
-                    qubits_per_trap=cfg['QUBITS_PER_TRAP']
-                ),
-                device=cfg['BOSONIC_TIMING'],
-            ) for n in cfg['N_LIST']
-        ]
-        return pd.DataFrame(ibm_data + bosonic_data)
-
-    return (generate_tts_data,)
-
-
-@app.cell
-def _(generate_tts_data):
-    tts_df = generate_tts_data(TTS_CFG, constructor=ghz_circuit)
-    tts_df
+def _(scaling_df):
+    tts_df = scaling_df.join(scaling_df.apply(tts_data_series, axis=1))
     return (tts_df,)
 
 
-@app.cell
-def _(tts_df):
-    plot_scaling_metric(tts_df, 'log_t_shot')
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    ## Exploring Results
+
+    Since we're using the same data structure, we can also re-use our plotting funtions from the previous section:
+    """)
     return
 
 
 @app.cell
 def _(tts_df):
-    plot_scaling_metric(tts_df, 'log_tts')
+    plot_scaling_metric(
+        tts_df, 't_shot', title='GHZ Scaling', ylabel='Shot Duration (seconds)', yscale='log',
+    )
+    return
+
+
+@app.cell
+def _(tts_df):
+    plot_scaling_metric(
+        tts_df, 'tts', title='GHZ Scaling', ylabel='Time-to-Solution (seconds)', yscale='log',
+    )
     return
 
 
@@ -1136,26 +1068,28 @@ def _():
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    # Extrapolating to Useful Circuit Sizes
+    # Extrapolating to Utility Scale
 
-    The IBM device caps out at 127 qubits, to get around this and avoid expensive simulation we can use the data we have from our current simulation and assume that we would see a similar pattern as we extent to utility scale regimes (assuming that the IBM chip would have the same structure but grow in qubit counts).
+    The IBM device caps out at 127 qubits, to get around this limitation (and avoid expensive compilation of gigantic circuits) we can use the data we have from our current simulation and assume that we would see a similar pattern as we extend to utility-scale regimes (assuming that the IBM chip would have the same heavy-hex structure at larger qubit counts).
 
-    The graphs suggest we see a linear increase in gate counts between monolithic and distributed system. Assuming we continue to scale linearly we can use a line of best fit to extrapolate to the utility scale regime we want to explore.
+    The graphs suggest we see a linear increase in gate counts on both monolithic and distributed systems. Assuming we continue to scale linearly, we can use a line of best fit to extrapolate to the utility scale regime we want to explore.
 
-    For each scenario (`monolithic`, `distributed`), we:
-    1. fit linear trends on transpiled points:
-       - `N1(n) ~ a1 * n + b1`
-       - `N2(n) ~ a2 * n + b2`
-    2. Use projected `N1, N2, N_meas` in the same TTS model.
-    3. Plot projected complexity and projected `TTS_shots` on log scales.
+    For each hardware backend, we:
+
+    1. Fit a linear model of gate type (single-qubit, two-qubit, measurement) on $n$
+    2. Use predicted gate counts in the same TTS model
+    3. Plot projected complexity and TTS on log scales (to handle very large numbers)
     """)
     return
 
 
-@app.cell
-def _(scaling_df):
-    # use scaling data to get linear coefficients
-    scaling_df.columns.tolist()
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    ## Fitting a Linear Model
+
+    We already have all the data we need to from our earlier simulations; the tricky part is getting it into the shape that we need. We can do some `pandas` magic to get a `DataFrame` where each row is a data point we can use in our linear model by combining some of our columns using `melt`:
+    """)
     return
 
 
@@ -1169,6 +1103,14 @@ def _(scaling_df):
     )
     df_linear_fit
     return (df_linear_fit,)
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    Now we have our linear predictor `n` and our response `gate_count`, and we can group the data by `backend` and `gate_type` to get one fit for each combination:
+    """)
+    return
 
 
 @app.cell
@@ -1186,29 +1128,45 @@ def _(df_linear_fit):
     return (fits,)
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _():
+    mo.md(r"""
+    Now if we add `n` as a column, we can compute the predicted `gate_count` in each row:
+    """)
     return
 
 
 @app.cell
 def _(fits):
-    preds = fits.merge(pd.DataFrame({'n': np.logspace(1, 5, 24).astype(int)}), how='cross')
-    preds['gate_count_predicted'] = np.ceil(preds['intercept'] + preds['slope'] * preds['n']).astype(int)
-    preds
-    return (preds,)
+    _preds = fits.copy()
+    _preds['n'] = 10000
+    _preds['gate_count_predicted'] = np.ceil(
+        _preds['intercept'] + _preds['slope'] * _preds['n']
+    ).astype(int)
+    _preds
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    Now we just need to add more values for $n$! We can create a new `DataFrame` and perform a cross join to get all possible combinations (one $n$ for each backend and gate type):
+    """)
+    return
 
 
 @app.cell
-def _(preds):
-    pred_df = preds.pivot_table(
-        index=['backend', 'n'],
-        columns='gate_type',
-        values='gate_count_predicted',
-        aggfunc='first',
-    ).reset_index()
-    pred_df
-    return (pred_df,)
+def _(fits):
+    fits.merge(pd.DataFrame({'n': np.logspace(3, 5, 10).astype(int)}), how='cross')
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    Let's put the whole process into a function:
+    """)
+    return
 
 
 @app.function
@@ -1217,7 +1175,7 @@ def gate_count_prediction(fits, nvals):
     preds['gate_count_predicted'] = np.ceil(
         preds['intercept'] + preds['slope'] * preds['n']
     ).astype(int)
-    return preds.pivot_table(
+    return preds.pivot_table( # go back to one column for each gate type
         index=['backend', 'n'],
         columns='gate_type',
         values='gate_count_predicted',
@@ -1225,170 +1183,64 @@ def gate_count_prediction(fits, nvals):
     ).reset_index()
 
 
-@app.function
-def tts_data_series(circuit_data, shots=TTS_CFG['SHOTS']):
-    device = TTS_CFG['TIMING'][circuit_data['backend']]
-    data = {'log_pr_success': shot_success_log_prob(circuit_data, device=device)}
-    data['t_shot'] = T_shot(circuit_data, device=device)
-    data['log_t_shot'] = np.log(data['t_shot'])
-    data['t_shot_compute'] = data['t_shot'] - device['t_overhead']
-    data['log_tts_ideal'] = np.log(shots) + np.log(data['t_shot'])
-    data['log_tts'] = data['log_tts_ideal'] - data['log_pr_success']
-    data['tts'] = np.exp(data['log_tts'])
-    return pd.Series(data)
-
-
 @app.cell
-def _(pred_df):
-    pred_df.join(pred_df.apply(tts_data_series, axis=1))
-    return
-
-
-@app.cell
-def _():
-    return
-
-
-@app.cell
-def _(
-    BosonicDistributor,
-    IBM_OPT_LEVEL_GROWTH,
-    QUBITS_PER_TRAP_1,
-    SHOTS_2,
-    TTS_from_shots,
-    T_shot_from_counts,
-    compile_bosonic,
-    compile_monolithic_ibm_fake,
-    distributed_trap_count,
-    gate_counts,
-    shot_success_probability,
-):
-    N_EXTRAP = np.unique(np.logspace(0, 5, 24).astype(int)).tolist()
-    GROWTH_SWEEP_MAX_N = 126
-
-    def fit_linear(n_vals, y_vals):
-        _n = np.asarray(n_vals, dtype=float)
-        y = np.asarray(y_vals, dtype=float)
-        mask = np.isfinite(_n) & np.isfinite(y)
-        _n = _n[mask]
-        y = y[mask]
-        if _n.size < 2:
-            return None
-        a, b = np.polyfit(_n, y, 1)
-        return (float(a), float(b))
-
-    def predict_linear(n_vals, params):
-        if params is None:
-            return np.full(len(n_vals), np.nan)
-        a, b = params
-        _n = np.asarray(n_vals, dtype=float)
-        return a * _n + b
-    rows = []
-    n_growth_list = list(range(2, GROWTH_SWEEP_MAX_N + 1))
-    for _n in n_growth_list:
-        qc = ghz_circuit(_n)
-        qc_ibm = compile_monolithic_ibm_fake(qc, optimization_level=IBM_OPT_LEVEL_GROWTH)
-        N1_i, N2_i, Nm_i = gate_counts(qc_ibm)
-        rows.append({'n': _n, 'scenario': 'monolithic', 'label': f'IBM FakeSherbrooke (opt={IBM_OPT_LEVEL_GROWTH})', 'N1': N1_i, 'N2': N2_i, 'N_meas': Nm_i})
-        k_growth = distributed_trap_count(_n)
-        qc_bos = compile_bosonic(qc, _n, k_growth, BosonicDistributor())
-        N1_b, N2_b, Nm_b = gate_counts(qc_bos)
-        rows.append({'n': _n, 'scenario': 'distributed', 'label': f'Bosonic (traps=ceil(n/{QUBITS_PER_TRAP_1}))', 'N1': N1_b, 'N2': N2_b, 'N_meas': Nm_b})
-    df_growth_sweep = pd.DataFrame(rows)
-    fit_rows = []
-    _proj_rows = []
-    source = df_growth_sweep.copy()
-    for _scenario in ['monolithic', 'distributed']:
-        _sub = source[source['scenario'] == _scenario].sort_values('n')
-        _p1 = fit_linear(_sub['n'].values, _sub['N1'].values)
-        _p2 = fit_linear(_sub['n'].values, _sub['N2'].values)
-        _pm = fit_linear(_sub['n'].values, _sub['N_meas'].values)
-        fit_rows.append({'scenario': _scenario, 'N1_slope': np.nan if _p1 is None else _p1[0], 'N1_intercept': np.nan if _p1 is None else _p1[1], 'N2_slope': np.nan if _p2 is None else _p2[0], 'N2_intercept': np.nan if _p2 is None else _p2[1], 'Nmeas_slope': np.nan if _pm is None else _pm[0], 'Nmeas_intercept': np.nan if _pm is None else _pm[1]})
-        _n_proj = np.array(N_EXTRAP, dtype=float)
-        _n1_proj = np.maximum(predict_linear(_n_proj, _p1), 0.0)
-        _n2_proj = np.maximum(predict_linear(_n_proj, _p2), 0.0)
-        _nm_proj = np.maximum(predict_linear(_n_proj, _pm), 0.0)
-        for _n_val, _n1_hat, _n2_hat, _nm_hat in zip(_n_proj, _n1_proj, _n2_proj, _nm_proj):
-            _k_modules = 1 if _scenario == 'monolithic' else distributed_trap_count(_n_val)
-            _p_succ_hat = shot_success_probability(_n1_hat, _n2_hat, scenario=_scenario)
-            _t_shot_hat = T_shot_from_counts(_n1_hat, _n2_hat, N_meas=_nm_hat, scenario=_scenario)
-            tts_ideal_hat = SHOTS_2 * _t_shot_hat
-            _tts_hat = TTS_from_shots(_t_shot_hat, p_success=_p_succ_hat, shots=SHOTS_2)
-            _proj_rows.append({'n': int(_n_val), 'scenario': _scenario, 'k_modules': int(_k_modules), 'N1_hat': float(_n1_hat), 'N2_hat': float(_n2_hat), 'N_meas_hat': float(_nm_hat), 'P_success_hat': float(_p_succ_hat), 'T_shot_hat': float(_t_shot_hat), 'TTS_shots_ideal_hat': float(tts_ideal_hat), 'TTS_shots_hat': float(_tts_hat)})
-    df_proj = pd.DataFrame(_proj_rows)
-    return df_proj, fit_linear, predict_linear
+def _(fits):
+    pred_df = gate_count_prediction(fits, np.logspace(1, 5, 24).astype(int))
+    pred_df
+    return (pred_df,)
 
 
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    ### We now plot extrapolated results on log-log axes. On a log-log plot, straight lines indicate power-law-like scaling behavior over the displayed range.
+    Now that we have our gate counts, we can reuse our TTS data computation functions from earlier to get our new results:
     """)
     return
 
 
 @app.cell
-def _(TTS_PLOT_MAX, df_proj):
-    if df_proj.empty:
-        raise RuntimeError('df_proj is missing or empty. Run the extrapolation-fit cell first.')
-    _scenario_labels = {'monolithic': 'Monolithic (IBM fake)', 'distributed': 'Distributed (Bosonic, traps=ceil(n/128))'}
-    scenarios_present = [s for s in df_proj['scenario'].dropna().unique().tolist()]
-    plt.figure(figsize=(8.5, 4.5))
-    for _scenario in scenarios_present:
-        prj = df_proj[df_proj['scenario'] == _scenario].sort_values('n')
-        y = prj['N2_hat'].replace([np.inf, -np.inf], np.nan)
-        y = y.clip(lower=1.0)
-        m = np.isfinite(y) & np.isfinite(prj['n'])
-        if m.any():
-            plt.plot(prj.loc[m, 'n'], y[m], marker='o', label=_scenario_labels.get(_scenario, _scenario))
-    plt.xscale('log')
-    plt.yscale('log')
-    plt.ylim(bottom=1.0)
-    plt.xlabel('n qubits (log scale)')
-    plt.ylabel('Projected 2Q gate count (log scale)')
-    plt.title('Projected 2Q growth for n in [10^0, 10^5]')
-    plt.grid(True, which='both', alpha=0.3)
-    plt.legend()
-    plt.show()
-    plt.figure(figsize=(8.5, 4.5))
-    cutoff_notes = []
-    for _scenario in scenarios_present:
-        prj = df_proj[df_proj['scenario'] == _scenario].sort_values('n').copy()
-        y = prj['TTS_shots_hat'].replace([np.inf, -np.inf], np.nan)
-        valid = np.isfinite(y) & np.isfinite(prj['n']) & (y > 0) & (y <= TTS_PLOT_MAX) & (y <= 1000000000000.0)
-        if valid.any():
-            x_ok = prj.loc[valid, 'n']
-            y_ok = y[valid]
-            plt.plot(x_ok, y_ok, marker='o', label=_scenario_labels.get(_scenario, _scenario))
-        invalid = ~np.isfinite(y) | (y <= 0) | (y > TTS_PLOT_MAX) | (y > 1000000000000.0)
-        if invalid.any():
-            n_cut = int(prj.loc[invalid, 'n'].iloc[0])
-            cutoff_notes.append(f'{_scenario_labels.get(_scenario, _scenario)}: truncated at n >= {n_cut}')
-    plt.xscale('log')
-    plt.yscale('log')
-    plt.ylim(1.0, 1000000000000.0)
-    plt.xlabel('n qubits (log scale)')
-    plt.ylabel('Projected Time To Solution (s, log scale)')
-    plt.title('Extrapolated Time To Solution for n in [10^0, 10^5]')
-    plt.grid(True, which='both', alpha=0.3)
-    plt.legend()
-    plt.show()
-    if cutoff_notes:
-        print('Extrapolation truncation notes (overflow/instability guardrail):')
-        for note in cutoff_notes:
-            print(' -', note)
-        print('Values beyond these cutoffs are omitted from the plot to avoid numerical overflow errors')
+def _(pred_df):
+    extrapolation_df = pred_df.join(pred_df.apply(tts_data_series, axis=1))
+    return (extrapolation_df,)
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    ## Interpreting Results
+
+    As before, we plot the (predicted) metrics we care about to see how they scale with circuit size.
+    """)
+    return
+
+
+@app.cell
+def _(extrapolation_df):
+    plot_scaling_metric(
+        extrapolation_df, 'two_qubit_count', 
+        title='Extrapolated GHZ Scaling', 
+        xscale='log', yscale='log', ylabel='Projected Two-Qubit Gate Count'
+    )
+    return
+
+
+@app.cell
+def _(extrapolation_df):
+    # TODO: add ylim handling
+    plot_scaling_metric(
+        extrapolation_df, 'log_tts', 
+        title='Extrapolated GHZ Scaling', 
+        xscale='log', yscale='linear', ylabel='Log Time-to-Solution (seconds)'
+    )
     return
 
 
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    # Interpreting the Results
-
     These projections highlight a key scaling challenge for monolithic approaches.
 
-    At small sizes, monolithic circuits with fast native gates can outperform distributed ones by far. As size grows, routing overhead in nearest-neighbor architectures creates fast growth in two-qubit costs and greatly imparcting Time-To-Solution. This is a key challenge monolithic approaches face and why as we try to scale to useful qubit counts the industry is turning to distributed quantum computing.
+    At small sizes, monolithic circuits with fast native gates can outperform distributed ones by far. As size grows, routing overhead begins to dominate. We explored this on a superconducting system, where distant qubits are entangled via SWAP chains, but routing is still an issue in architectures where qubits can be physically moved around the QPU (shuttling ions with QCCD, shuttling neutral atoms with AOMs, shuttling spin qubits from cell to cell across a silicon chip).
 
     Distributed systems introduce their own challenges (for example remote entanglement and coordination overhead), but they provide a practical path to larger effective system sizes.
     """)
@@ -1398,22 +1250,53 @@ def _():
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    --------------------------------------------------------------------------------------------------------------------------------------
+    # Conclusion
 
-    # Distributing Circuits
+    In this notebook we explored how scaling quantum circuits scale between monolithic and distributed architectures strictly in terms of gate counts.
+    """)
+    return
 
-    In this notebook we explored how scaling quantum circuits scale between monolithic and distributed architectures stricly in terms of gate counts. However, we neglected one of the biggest advantages that distributed systems have, their ability to run computations in parallel on different modules/QPUs. One can also use this ability to run computations in parallel to run different parts of a circuit at the same time! This is one of the biggest advantages of distributed quantum computing but implementation is not as trivial as one may think. Refer back to the slides to learn more!
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    ## Relaxing Assumptions
+
+    We assumed that gates are executed sequentially, but in many architectures multiple gates on different qubits can happen simultaneously. For the fake IBM backend, we can actually use Qiskit it to inspect the gate timing of a transpiled circuit:
     """)
     return
 
 
 @app.cell
-def _(FAKE_IBM_BACKEND, ibm_circuits):
+def _(FAKE_IBM_BACKEND):
+    # compilation is non-deterministic – run this cell a few times to see the changes
     qiskit.visualization.timeline.draw(
-        ibm_circuits[3]['circuit'], 
+        qiskit.transpile(ghz_circuit(7), backend=FAKE_IBM_BACKEND, optimization_level=3), 
         target=FAKE_IBM_BACKEND.target, 
         show_idle=False,
     )
+    return
+
+
+@app.cell
+def _(FAKE_IBM_BACKEND):
+    def _duration(n):
+        transpiled =  qiskit.transpile(
+            ghz_circuit(7), backend=FAKE_IBM_BACKEND, optimization_level=3
+        )
+        return transpiled.estimate_duration(target=FAKE_IBM_BACKEND.target)
+
+    plt.hist(pd.DataFrame({'duration': [_duration(10) for _ in range(100)]}))
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    ## Other Dimensions
+
+    However, we neglected one of the biggest advantages that distributed systems have: their ability to run computations in parallel on different modules/QPUs. One can also use this ability to run computations in parallel to run different parts of a circuit at the same time! This is one of the biggest advantages of distributed quantum computing but implementation is not as trivial as one may think. Refer back to the slides to learn more!
+    """)
     return
 
 
@@ -1434,9 +1317,11 @@ def _():
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    --------------------------------------------------------------------------------------------------------------------------------------
-    # Try It Yourself: Build Your Own Scaling Experiment
+    ## Build Your Own Experiment
     - here we compare two different distribution plugins: BosonicDistributor (simple naive implementation) and DisqcoDistributor (state of the art algorithm; https://github.com/felix-burt/DISQCO)
+
+    > [!TODO]
+    > Rewrite this section to use the functions in the new version.
     """)
     return
 
@@ -1513,6 +1398,7 @@ def _(
     YOUR_METRIC_LABELS,
     YOUR_METRIC_REGISTRY,
     extract_metrics,
+    module_count,
 ):
     # Here you can adjust the list "YOUR_METRICS_TO_PLOT" to choose which metrics you would like to plot! 
     YOUR_METRICS_TO_PLOT = ['two_qubit_count', 'single_qubit_count', 'total_ops']
