@@ -712,6 +712,14 @@ def update_metrics(data, circuit):
     return data
 
 
+@app.function
+def circuit_metrics(circuit):
+    converted = CircuitConverters.from_qiskit(circuit)
+    data = bosonic_sdk.GateStatistics.stats(converted)
+    data.update(qiskit_metrics(circuit))
+    return data
+
+
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
@@ -749,6 +757,29 @@ def scaling_bosonic(
     return update_metrics(data, circuit)
 
 
+@app.cell
+def _(FAKE_IBM_BACKEND):
+    def scale_ibm(n, constructor=ghz_circuit, backend=FAKE_IBM_BACKEND, **transpile_kwargs):
+        circuit = qiskit.transpile(constructor(n), backend=FAKE_IBM_BACKEND, **transpile_kwargs)
+        data = {'backend': 'IBM', 'n': n, 'k': 1, 'circuit': circuit}
+        return data
+
+    return (scale_ibm,)
+
+
+@app.function
+def scale_bosonic(
+    n,
+    constructor=ghz_circuit,
+    qubits_per_trap=SCALING_CFG['QUBITS_PER_TRAP'],
+    distributor=bosonic_sdk.BosonicDistributor(),
+):
+    k = np.ceil(n / qubits_per_trap).astype(int)
+    circuit = compile_bosonic_circuit(constructor(n), n, k, distributor)
+    data = {'backend': 'Bosonic', 'n': n, 'k': k, 'circuit': circuit}
+    return data
+
+
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
@@ -758,29 +789,60 @@ def _():
 
 
 @app.cell
-def _(scaling_ibm):
-    _ibm_results = [scaling_ibm(n) for n in mo.status.progress_bar(
+def _(scale_ibm):
+    ibm_circuits = [scale_ibm(n, optimization_level=3) for n in mo.status.progress_bar(
         range(3, 128),
         title='Compiling',
         subtitle='Monolithic IBM backend',
     )]
+    return (ibm_circuits,)
 
-    _bosonic_results = [scaling_bosonic(n) for n in mo.status.progress_bar(
+
+@app.cell
+def _():
+    bosonic_circuits = [scale_bosonic(n) for n in mo.status.progress_bar(
         range(3, 128),
         title='Compiling',
         subtitle='Distributed Bosonic backend',
     )]
-    return
+    return (bosonic_circuits,)
 
 
 @app.cell
-def _(scaling_ibm):
-    scaling_df = pd.DataFrame(
-        [scaling_ibm(n) for n in SCALING_CFG['N_LIST']] +
-        [scaling_bosonic(n) for n in SCALING_CFG['N_LIST']]
-    )
-    scaling_df
+def _(bosonic_circuits, ibm_circuits):
+    circuit_df = pd.DataFrame(ibm_circuits + bosonic_circuits)
+    circuit_df.loc[:, circuit_df.columns != 'circuit']
+    return (circuit_df,)
+
+
+@app.cell
+def _(circuit_df):
+    metrics_df = pd.DataFrame(circuit_df['circuit'].apply(circuit_metrics).tolist())
+    metrics_df
+    return (metrics_df,)
+
+
+@app.cell
+def _(circuit_df, metrics_df):
+    scale_df = circuit_df.join(metrics_df)
+    scale_df.loc[:, scale_df.columns != 'circuit']
+    return (scale_df,)
+
+
+@app.cell
+def _(scale_df):
+    # scaling_df = pd.DataFrame(
+    #     [scaling_ibm(n) for n in SCALING_CFG['N_LIST']] +
+    #     [scaling_bosonic(n) for n in SCALING_CFG['N_LIST']]
+    # )
+    scaling_df = scale_df
     return (scaling_df,)
+
+
+@app.cell
+def _(FAKE_IBM_BACKEND, ibm_circuits):
+    ibm_circuits[100]['circuit'].estimate_duration(target=FAKE_IBM_BACKEND.target)
+    return
 
 
 @app.cell(hide_code=True)
@@ -1091,9 +1153,99 @@ def _():
 
 
 @app.cell
-def _():
+def _(scaling_df):
     # use scaling data to get linear coefficients
+    scaling_df.columns.tolist()
+    return
 
+
+@app.cell
+def _(scaling_df):
+    df_linear_fit = scaling_df.melt(
+        id_vars = ['backend', 'n'],
+        value_vars = ['single_qubit_count', 'two_qubit_count', 'measure_count'],
+        var_name = 'gate_type',
+        value_name = 'gate_count',
+    )
+    df_linear_fit
+    return (df_linear_fit,)
+
+
+@app.cell
+def _(df_linear_fit):
+    def _fit(g):
+        slope, intercept = np.polyfit(g['n'], g['gate_count'], 1)
+        return pd.Series({'slope': slope, 'intercept': intercept})
+    
+    fits = (
+        df_linear_fit.groupby(['backend', 'gate_type'])
+        .apply(_fit, include_groups=False)
+        .reset_index()
+    )
+    fits
+    return (fits,)
+
+
+@app.cell
+def _():
+    return
+
+
+@app.cell
+def _(fits):
+    preds = fits.merge(pd.DataFrame({'n': np.logspace(1, 5, 24).astype(int)}), how='cross')
+    preds['gate_count_predicted'] = np.ceil(preds['intercept'] + preds['slope'] * preds['n']).astype(int)
+    preds
+    return (preds,)
+
+
+@app.cell
+def _(preds):
+    pred_df = preds.pivot_table(
+        index=['backend', 'n'],
+        columns='gate_type',
+        values='gate_count_predicted',
+        aggfunc='first',
+    ).reset_index()
+    pred_df
+    return (pred_df,)
+
+
+@app.function
+def gate_count_prediction(fits, nvals):
+    preds = fits.merge(pd.DataFrame({'n': nvals}), how='cross')
+    preds['gate_count_predicted'] = np.ceil(
+        preds['intercept'] + preds['slope'] * preds['n']
+    ).astype(int)
+    return preds.pivot_table(
+        index=['backend', 'n'],
+        columns='gate_type',
+        values='gate_count_predicted',
+        aggfunc='first',
+    ).reset_index()
+
+
+@app.function
+def tts_data_series(circuit_data, shots=TTS_CFG['SHOTS']):
+    device = TTS_CFG['TIMING'][circuit_data['backend']]
+    data = {'log_pr_success': shot_success_log_prob(circuit_data, device=device)}
+    data['t_shot'] = T_shot(circuit_data, device=device)
+    data['log_t_shot'] = np.log(data['t_shot'])
+    data['t_shot_compute'] = data['t_shot'] - device['t_overhead']
+    data['log_tts_ideal'] = np.log(shots) + np.log(data['t_shot'])
+    data['log_tts'] = data['log_tts_ideal'] - data['log_pr_success']
+    data['tts'] = np.exp(data['log_tts'])
+    return pd.Series(data)
+
+
+@app.cell
+def _(pred_df):
+    pred_df.join(pred_df.apply(tts_data_series, axis=1))
+    return
+
+
+@app.cell
+def _():
     return
 
 
@@ -1255,16 +1407,26 @@ def _():
     return
 
 
+@app.cell
+def _(FAKE_IBM_BACKEND, ibm_circuits):
+    qiskit.visualization.timeline.draw(
+        ibm_circuits[3]['circuit'], 
+        target=FAKE_IBM_BACKEND.target, 
+        show_idle=False,
+    )
+    return
+
+
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    --------------------------------------------------------------------------------------------------------------------------------------
+    ---
 
     # Try it Yourself!
 
     You may have noticed that the scaling behaviour for our circuits had the same shape across different metrics. This was due to our choice of using GHZ circuits. As we scaled up we added two exactly one CNOT which made all of our scaling trivial. Below is a sandbox where you can design your own circuit and use all of the tools we have defined to explore scaling using your own circuit!
 
-    Start in the cell below by defining your circuit! The only requirement is to add some dependency on the number of qubits (n) so that your circuit has some sort of scaling and is compatabile with all of our functions! This is left as an excercise for your own time or if you get through the notebook earlier than others!
+    Start in the cell below by defining your circuit! The only requirement is to add some dependency on the number of qubits $n$ so that your circuit has some sort of scaling and is compatible with all of our functions! This is left as an excercise for your own time or if you get through the notebook earlier than others!
     """)
     return
 
