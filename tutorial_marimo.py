@@ -25,6 +25,9 @@
 # [tool.uv.sources]
 # bosonic-sdk = { index = "test-pypi" }
 # bosonic-disqco = { index = "test-pypi" }
+#
+# [tool.uv]
+# index-strategy = "unsafe-best-match"
 # ///
 
 import marimo
