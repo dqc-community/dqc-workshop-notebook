@@ -9,6 +9,7 @@ dependencies = [
     "marimo",
     "pandas",
     "matplotlib",
+    "scikit-learn",
     "qiskit>=1.0",
     "qiskit-aer",
     "qiskit-ibm-runtime",
