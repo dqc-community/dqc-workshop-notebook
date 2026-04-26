@@ -1,4 +1,4 @@
-# /// script
+# /// script-disabled
 # requires-python = "==3.10.*"
 # dependencies = [
 #     "ipykernel",
@@ -32,7 +32,7 @@
 
 import marimo
 
-__generated_with = "0.23.3"
+__generated_with = "0.23.2"
 app = marimo.App(width="full")
 
 with app.setup(hide_code=True):
@@ -820,13 +820,13 @@ def plot_scaling_metric(df, metric, **kwargs):
         plt.plot(subdf['n'], subdf[metric], label=_backend)
 
     plt.title(kwargs.get('title', 'Scaling Behavior'))
-    
+
     plt.xlabel('Number of Qubits')
     plt.xscale(kwargs.get('xscale', 'linear'))
     plt.ylabel(kwargs.get('ylabel', metric))
     plt.yscale(kwargs.get('yscale', 'linear'))
     plt.legend(title='Backend')
-    
+
     plt.tight_layout()
     plt.show()
 
@@ -1121,7 +1121,7 @@ def _(df_linear_fit):
     def _fit(g):
         slope, intercept = np.polyfit(g['n'], g['gate_count'], 1)
         return pd.Series({'slope': slope, 'intercept': intercept})
-    
+
     fits = (
         df_linear_fit.groupby(['backend', 'gate_type'])
         .apply(_fit, include_groups=False)

@@ -222,7 +222,6 @@ dependencies = [
     { name = "igraph" },
     { name = "importlib-resources" },
     { name = "numpy" },
-    { name = "pygraphviz" },
     { name = "pytket" },
     { name = "pytket-pyzx" },
     { name = "pyzx" },
@@ -252,7 +251,6 @@ dependencies = [
     { name = "bosonic-pytket-dqc" },
     { name = "bosonic-qasmbench" },
     { name = "cirq-core" },
-    { name = "dqsim" },
     { name = "graphviz" },
     { name = "hypergraph-partitioner" },
     { name = "ipython" },
@@ -528,6 +526,7 @@ dependencies = [
     { name = "qiskit" },
     { name = "qiskit-aer" },
     { name = "qiskit-ibm-runtime" },
+    { name = "scikit-learn" },
 ]
 
 [package.metadata]
@@ -541,21 +540,11 @@ requires-dist = [
     { name = "qiskit", specifier = ">=1.0" },
     { name = "qiskit-aer" },
     { name = "qiskit-ibm-runtime" },
+    { name = "scikit-learn" },
 ]
 
 [package.metadata.requires-dev]
 dev = []
-
-[[package]]
-name = "dqsim"
-version = "0.1.0"
-source = { registry = "https://test.pypi.org/simple/" }
-dependencies = [
-    { name = "bosonic-converters" },
-    { name = "bosonic-model" },
-    { name = "numpy" },
-]
-sdist = { url = "https://test-files.pythonhosted.org/packages/b9/ff/c81f149892c706ee9dec1daf3b3908f35df36682bd77f6cf35b7d2e2fb09/dqsim-0.1.0.tar.gz", hash = "sha256:cda6ccaf16615df742475b90f18b7e656df7d346204ea1270eff765f67942613", size = 14005, upload-time = "2026-04-08T22:27:01.513Z" }
 
 [[package]]
 name = "duet"
@@ -1819,12 +1808,6 @@ sdist = { url = "https://test-files.pythonhosted.org/packages/c3/b2/bc9c91969163
 wheels = [
     { url = "https://test-files.pythonhosted.org/packages/f4/7e/a72dd26f3b0f4f2bf1dd8923c85f7ceb43172af56d63c7383eb62b332364/pygments-2.20.0-py3-none-any.whl", hash = "sha256:81a9e26dd42fd28a23a2d169d86d7ac03b46e2f8b59ed4698fb4785f946d0176", size = 1231151, upload-time = "2026-03-29T13:28:54.842Z" },
 ]
-
-[[package]]
-name = "pygraphviz"
-version = "1.14"
-source = { registry = "https://pypi.org/simple/" }
-sdist = { url = "https://files.pythonhosted.org/packages/66/ca/823d5c74a73d6b8b08e1f5aea12468ef334f0732c65cbb18df2a7f285c87/pygraphviz-1.14.tar.gz", hash = "sha256:c10df02377f4e39b00ae17c862f4ee7e5767317f1c6b2dfd04cea6acc7fc2bea", size = 106003, upload-time = "2024-09-29T18:31:12.471Z" }
 
 [[package]]
 name = "pyjwt"
