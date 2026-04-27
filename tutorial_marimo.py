@@ -1321,25 +1321,26 @@ def _():
 def _():
     mo.md(r"""
     ## Build Your Own Experiment
-    - here we compare two different distribution plugins: BosonicDistributor (simple naive implementation) and DisqcoDistributor (state of the art algorithm; https://github.com/felix-burt/DISQCO)
 
-    > [!TODO]
-    > Rewrite this section to use the functions in the new version.
+    In this section, you can swap in your own circuit family and reuse the same compilation, metric, TTS, and extrapolation tools from the rest of the notebook.
+
+    The only requirement is that `circuit_fn(n)` returns a measured Qiskit circuit with `n` qubits.
     """)
     return
 
 
 @app.cell(disabled=True)
-def _(QuantumCircuit):
-    YOUR_N_LIST = range(9,100, 9)
-    YOUR_N_EXTRAP = np.unique(np.logspace(0, 5, 24).astype(int)).tolist()
-    YOUR_BOSONIC_QUBITS_PER_MODULE = 20
+def _():
+    YOUR_N_LIST = range(9, 46, 9)
+    YOUR_N_EXTRAP = np.unique(np.logspace(1, 5, 24).astype(int)).tolist()
+    YOUR_BOSONIC_QUBITS_PER_TRAP = 20
+    YOUR_METRICS_TO_PLOT = ['two_qubit_count', 'single_qubit_count', 'total_ops']
 
     # Default is a Shor 9 Qubit error correcting circuit 
     def circuit_fn(n: int):
         if n % 9 != 0 or n < 9:
             raise ValueError('Use n as a positive multiple of 9 (e.g., 9, 18, 27, ...).')
-        _qc = QuantumCircuit(n, n)
+        _qc = qiskit.QuantumCircuit(n, n)
         n_blocks = n // 9
         for b in range(n_blocks):
             o = 9 * b
@@ -1355,211 +1356,142 @@ def _(QuantumCircuit):
         return _qc
 
     return (
-        YOUR_BOSONIC_QUBITS_PER_MODULE,
+        YOUR_BOSONIC_QUBITS_PER_TRAP,
+        YOUR_METRICS_TO_PLOT,
         YOUR_N_EXTRAP,
         YOUR_N_LIST,
         circuit_fn,
     )
 
 
-@app.cell(disabled=True)
+@app.cell(hide_code=True)
 def _():
-    ## These are a list of available metrics to plot, you do not need to edit this cell it serves only as a library of available metrics. 
-
-    YOUR_METRIC_REGISTRY = {
-        'depth': lambda s, g, q: s['depth'],
-        'two_qubit_depth': lambda s, g, q: q['two_qubit_depth'],
-        'two_qubit_count': lambda s, g, q: q['two_qubit_count'],
-        'single_qubit_count': lambda s, g, q: q['single_qubit_count'],
-        'total_ops': lambda s, g, q: s['total_ops'],
-        'measure_count': lambda s, g, q: q['measure_count'],
-        'reset_count': lambda s, g, q: q['reset_count'],
-        'remote_link_count': lambda s, g, q: g.get('remote_link_psi_minus', 0) + g.get('remote_link_psi_plus', 0),
-        'local_gate_count': lambda s, g, q: s['local_gate_count'],
-        'remote_gate_count': lambda s, g, q: s['remote_gate_count'],
-        'qubit_teleportation_count': lambda s, g, q: s['qubit_teleportation_count'],
-    }
-    YOUR_METRIC_LABELS = {
-        'depth': 'Depth',
-        'two_qubit_depth': 'Two-Qubit Layer Depth',
-        'two_qubit_count': 'Two-Qubit Gate Count',
-        'single_qubit_count': 'Single-Qubit Gate Count',
-        'total_ops': 'Total Ops',
-        'measure_count': 'Measurement Count',
-        'reset_count': 'Reset Count',
-        'remote_link_count': 'Remote Link Count',
-        'local_gate_count': 'Local Gate Count',
-        'remote_gate_count': 'Remote Gate Count',
-        'qubit_teleportation_count': 'Qubit Teleportation Count',
-    }
-    return YOUR_METRIC_LABELS, YOUR_METRIC_REGISTRY
-
-
-@app.cell(disabled=True)
-def _(
-    YOUR_BOSONIC_QUBITS_PER_MODULE,
-    YOUR_METRIC_LABELS,
-    YOUR_METRIC_REGISTRY,
-    extract_metrics,
-    module_count,
-):
-    # Here you can adjust the list "YOUR_METRICS_TO_PLOT" to choose which metrics you would like to plot! 
-    YOUR_METRICS_TO_PLOT = ['two_qubit_count', 'single_qubit_count', 'total_ops']
-
-    AVAILABLE_METRICS = list(YOUR_METRIC_REGISTRY.keys())
-    for metric in YOUR_METRICS_TO_PLOT:
-        if metric not in AVAILABLE_METRICS:
-            raise ValueError(f'Unknown metric selected for plotting: {metric}')
-    YOUR_PLOT_METRIC_PAIRS = [(metric, YOUR_METRIC_LABELS[metric]) for metric in YOUR_METRICS_TO_PLOT]
-
-    def your_module_count(n, qubits_per_module=YOUR_BOSONIC_QUBITS_PER_MODULE):
-        return module_count(n, qubits_per_module)
-
-    def extract_your_metrics(qc, metric_keys=YOUR_METRICS_TO_PLOT):
-        metric_pairs = [(metric, YOUR_METRIC_LABELS[metric]) for metric in metric_keys]
-        return extract_metrics(qc, YOUR_METRIC_REGISTRY, metric_pairs)
-
-    return YOUR_PLOT_METRIC_PAIRS, extract_your_metrics, your_module_count
-
-
-@app.cell(disabled=True)
-def _(fit_linear, math, predict_linear):
-    def run_your_benchmark(circuit_fn, n_list, distributor_list, compile_dist_fn, compile_mono_fn, build_tts_fn, extract_metrics_fn, module_count_fn, qubits_per_module):
-        rows = []
-        for n in n_list:
-            qc = circuit_fn(n)
-            qc_mono = compile_mono_fn(qc)
-            print(f"compiling circuit({n}) with IBM monolith")
-            rows.append({
-                **build_tts_fn(n, 'monolithic', 1, qc_comp=qc_mono),
-                'distributor': 'monolithic',
-                'label': 'Monolithic (IBM fake)',
-                **extract_metrics_fn(qc_mono),
-            })
-        for dist_name, distributor in distributor_list:
-            for n in n_list:
-                print(f"compiling circuit({n}) with distributor {distributor}")
-                qc = circuit_fn(n)
-                k = module_count_fn(n)
-                qc_dist = compile_dist_fn(qc, n, k, distributor)
-                rows.append({
-                    **build_tts_fn(n, 'distributed', k, qc_comp=qc_dist),
-                    'distributor': dist_name,
-                    'label': f'Distributed ({dist_name}, k=ceil(n/{qubits_per_module}))',
-                    **extract_metrics_fn(qc_dist),
-                })
-        return pd.DataFrame(rows)
-
-    def plot_your_metrics(df, metric_pairs, qubits_per_module):
-        dist_names = [d for d in df['distributor'].unique() if d != 'monolithic']
-        all_lines = [('monolithic', 'Monolithic (IBM fake)')] + [
-            (d, f'Distributed ({d}, k=ceil(n/{qubits_per_module}))') for d in dist_names
-        ]
-        n_metrics = len(metric_pairs)
-        nrows = math.ceil(n_metrics / 2)
-        fig, axes = plt.subplots(nrows, 2, figsize=(12, 4 * nrows))
-        axes = axes.flatten()
-        for ax, (metric, metric_title) in zip(axes, metric_pairs):
-            for dist_name, label in all_lines:
-                sub = df[df['distributor'] == dist_name].sort_values('n')
-                if not sub.empty:
-                    ax.plot(sub['n'], sub[metric], marker='o', label=label)
-            ax.set_title(metric_title)
-            ax.set_xlabel('n qubits')
-            ax.set_ylabel(metric)
-            ax.grid(True, alpha=0.3)
-        for ax in axes[n_metrics:]:
-            ax.set_visible(False)
-        axes[0].legend()
-        fig.suptitle('Your circuit: selected complexity metrics', y=1.02)
-        plt.tight_layout()
-        plt.show()
-
-    def extrapolate_and_plot(df, n_extrap, qubits_per_module):
-        dist_names = [d for d in df['distributor'].unique() if d != 'monolithic']
-        proj_rows = []
-        n_proj = np.asarray(n_extrap, dtype=float)
-        for dist_name in ['monolithic'] + dist_names:
-            sub = df[df['distributor'] == dist_name].sort_values('n')
-            pt = fit_linear(sub['n'], sub['total_ops'])
-            nt_proj = np.maximum(predict_linear(n_proj, pt), 0.0)
-            for n_val, nt_hat in zip(n_proj, nt_proj):
-                proj_rows.append({'n': int(n_val), 'distributor': dist_name, 'total_ops_hat': float(nt_hat)})
-        df_proj = pd.DataFrame(proj_rows)
-        fig, ax = plt.subplots(figsize=(7, 4.5))
-        for dist_name in ['monolithic'] + dist_names:
-            sub = df_proj[df_proj['distributor'] == dist_name].sort_values('n')
-            label = 'Monolithic (IBM fake)' if dist_name == 'monolithic' else f'Distributed ({dist_name}, k=ceil(n/{qubits_per_module}))'
-            y_tot = sub['total_ops_hat'].replace([np.inf, -np.inf], np.nan).clip(lower=1.0)
-            m_tot = np.isfinite(y_tot)
-            ax.plot(sub.loc[m_tot, 'n'], y_tot[m_tot], marker='o', label=label)
-        ax.set_xscale('log')
-        ax.set_yscale('log')
-        ax.set_title('Projected total ops')
-        ax.set_xlabel('n qubits (log scale)')
-        ax.set_ylabel('Projected total ops (log scale)')
-        ax.grid(True, which='both', alpha=0.3)
-        ax.legend()
-        plt.tight_layout()
-        plt.show()
-
-    return extrapolate_and_plot, plot_your_metrics, run_your_benchmark
-
-
-@app.cell(disabled=True)
-def _(
-    BosonicDistributor,
-    DisqcoDistributor,
-    HypergraphDistributor,
-    YOUR_BOSONIC_QUBITS_PER_MODULE,
-    YOUR_N_LIST,
-    build_tts_row,
-    circuit_fn,
-    compile_bosonic,
-    compile_monolithic_ibm_fake,
-    extract_your_metrics,
-    run_your_benchmark,
-    your_module_count,
-):
-    distributor_list = [
-        ('bosonic', BosonicDistributor()),
-        ('disqco', DisqcoDistributor()),
-    ]
-    if HypergraphDistributor is not None:
-        distributor_list.append(('hypergraph', HypergraphDistributor()))
-    df_your = run_your_benchmark(
-        circuit_fn=circuit_fn,
-        n_list=YOUR_N_LIST,
-        distributor_list=distributor_list,
-        compile_dist_fn=compile_bosonic,
-        compile_mono_fn=compile_monolithic_ibm_fake,
-        build_tts_fn=build_tts_row,
-        extract_metrics_fn=extract_your_metrics,
-        module_count_fn=your_module_count,
-        qubits_per_module=YOUR_BOSONIC_QUBITS_PER_MODULE,
-    )
-    return (df_your,)
-
-
-@app.cell(disabled=True)
-def _(
-    YOUR_BOSONIC_QUBITS_PER_MODULE,
-    YOUR_PLOT_METRIC_PAIRS,
-    df_your,
-    plot_your_metrics,
-):
-    plot_your_metrics(df_your, YOUR_PLOT_METRIC_PAIRS, YOUR_BOSONIC_QUBITS_PER_MODULE)
+    mo.md(r"""
+    Now compile your circuit family in the same two ways we used for GHZ circuits: once for the monolithic IBM backend and once for the distributed Bosonic backend.
+    """)
     return
 
 
 @app.cell(disabled=True)
 def _(
-    YOUR_BOSONIC_QUBITS_PER_MODULE,
-    YOUR_N_EXTRAP,
-    df_your,
-    extrapolate_and_plot,
+    TTS_CFG,
+    YOUR_BOSONIC_QUBITS_PER_TRAP,
+    YOUR_N_LIST,
+    circuit_fn,
+    scale_bosonic,
+    scale_ibm,
 ):
-    extrapolate_and_plot(df_your, YOUR_N_EXTRAP, YOUR_BOSONIC_QUBITS_PER_MODULE)
+    your_circuits = []
+    for n in YOUR_N_LIST:
+        print(f'Compiling circuit_fn({n}) for IBM')
+        your_circuits.append(
+            scale_ibm(n, constructor=circuit_fn, optimization_level=TTS_CFG['IBM_OPTIMIZATION_LEVEL'])
+        )
+
+    for n in YOUR_N_LIST:
+        print(f'Compiling circuit_fn({n}) for Bosonic')
+        your_circuits.append(
+            scale_bosonic(
+                n,
+                constructor=circuit_fn,
+                qubits_per_trap=YOUR_BOSONIC_QUBITS_PER_TRAP,
+            )
+        )
+
+    your_circuit_df = pd.DataFrame(your_circuits)
+    your_circuit_df.loc[:, your_circuit_df.columns != 'circuit']
+    return (your_circuit_df,)
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    Next, collect the same circuit metrics and TTS estimates used earlier in the notebook.
+    """)
+    return
+
+
+@app.cell(disabled=True)
+def _(circuit_metrics, tts_data_series, your_circuit_df):
+    _your_metrics = lambda g: pd.Series(circuit_metrics(g['circuit']))
+    your_scaling_df = your_circuit_df.join(your_circuit_df.apply(_your_metrics, axis=1))
+    your_tts_df = your_scaling_df.join(your_scaling_df.apply(tts_data_series, axis=1))
+    your_tts_df.loc[:, your_tts_df.columns != 'circuit']
+    return your_scaling_df, your_tts_df
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    Choose the metrics you want to inspect by editing `YOUR_METRICS_TO_PLOT` in the first cell of this section.
+    """)
+    return
+
+
+@app.cell(disabled=True)
+def _(YOUR_METRICS_TO_PLOT, plot_scaling_metric, your_tts_df):
+    for _metric in YOUR_METRICS_TO_PLOT:
+        plot_scaling_metric(
+            your_tts_df,
+            _metric,
+            title='Your Circuit Scaling',
+            ylabel=_metric,
+        )
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    Finally, extrapolate your measured gate counts and reuse the same TTS model to estimate how the circuit family might behave at larger sizes.
+    """)
+    return
+
+
+@app.cell(disabled=True)
+def _(YOUR_N_EXTRAP, gate_count_prediction, tts_data_series, your_scaling_df):
+    your_fit_df = your_scaling_df.melt(
+        id_vars=['backend', 'n'],
+        value_vars=['single_qubit_count', 'two_qubit_count', 'measure_count'],
+        var_name='gate_type',
+        value_name='gate_count',
+    )
+
+    def _fit_your_circuit(g):
+        slope, intercept = np.polyfit(g['n'], g['gate_count'], 1)
+        return pd.Series({'slope': slope, 'intercept': intercept})
+
+    your_fits = (
+        your_fit_df.groupby(['backend', 'gate_type'])
+        .apply(_fit_your_circuit, include_groups=False)
+        .reset_index()
+    )
+
+    your_pred_df = gate_count_prediction(your_fits, YOUR_N_EXTRAP)
+    your_extrapolation_df = your_pred_df.join(your_pred_df.apply(tts_data_series, axis=1))
+    your_extrapolation_df
+    return your_extrapolation_df, your_fit_df, your_fits, your_pred_df
+
+
+@app.cell(disabled=True)
+def _(plot_scaling_metric, your_extrapolation_df):
+    plot_scaling_metric(
+        your_extrapolation_df,
+        'two_qubit_count',
+        title='Your Circuit Extrapolated Scaling',
+        xscale='log',
+        yscale='log',
+        ylabel='Projected Two-Qubit Gate Count',
+    )
+
+    plot_scaling_metric(
+        your_extrapolation_df,
+        'log_tts',
+        title='Your Circuit Extrapolated Scaling',
+        xscale='log',
+        yscale='linear',
+        ylabel='Log Time-to-Solution (seconds)',
+    )
     return
 
 
