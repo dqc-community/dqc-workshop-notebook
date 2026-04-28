@@ -1,25 +1,18 @@
 # DQC Workshop Notebook
 
-This repository contains the workshop notebooks and marimo app for the DQC tutorial.
+This repository contains materials for the DQC tutorial workshop.
 
 ## Quick Start
 
-Dependencies are bundled with the notebook using [Marimo's sandbox mode](https://docs.marimo.io/guides/package_management/inlining_dependencies/).
+Dependencies are bundled with the notebook using [Marimo's sandbox mode](https://docs.marimo.io/guides/package_management/inlining_dependencies/). This means you can run the tutorial directly from GitHub (no clone required!) using the following command:
 
 ```bash
-UV_INDEX_STRATEGY=unsafe-best-match marimo edit --sandbox tutorial_marimo.py
-```
-
-Or using uv:
-
-```bash
-UV_INDEX_STRATEGY=unsafe-best-match uv run marimo edit --sandbox tutorial_marimo.py
+uvx marimo edit --sandbox https://github.com/dqc-community/dqc-workshop-notebook/blob/main/tutorial.py
 ```
 
 ## Requirements
 
 - Python 3.10+
-- [marimo](https://marimo.io)
 - [uv](https://github.com/astral-sh/uv)
 
 ## Development
@@ -41,17 +34,17 @@ uv sync --extra comparison
 Run the marimo tutorial (in development mode):
 
 ```bash
-marimo edit tutorial_marimo.py
+uv run marimo edit --sandbox tutorial.py
 ```
 
 Run the Jupyter notebook:
 
 ```bash
-jupyter lab tutorial.ipynb
+uv run jupyter lab tutorial.ipynb
 ```
 
 If you use classic notebook UI:
 
 ```bash
-jupyter notebook tutorial.ipynb
+uv run jupyter notebook tutorial.ipynb
 ```
