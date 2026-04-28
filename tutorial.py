@@ -77,44 +77,6 @@ with app.setup(hide_code=True):
         'SHOTS': 1024,
         'N_LIST': range(5, 126, 5),
         'QUBITS_PER_TRAP': 128,
-        'IBM_TIMING': {
-            't1q': 2e-8, # average one-qubit gate duration
-            't2q': 2e-7, # average two-qubit gate duration
-            't_meas': 1e-6, # average measurement duration
-            't_overhead': 2e-4, # device/control overhead
-            'e1q': 5e-4, # average one-qubit gate error
-            'e2q': 3e-3, # average two-qubit gate error
-        },
-        'BOSONIC_TIMING': {
-            't1q': 1e-6,
-            't2q': 3e-5,
-            't_meas': 4e-4,
-            't_overhead': 1e-3,
-            'e1q': 1e-6,
-            'e2q': 1e-4,
-        },
-        'TIMING': {
-            'IBM': {
-                't1q': 2e-8, # average one-qubit gate duration
-                't2q': 2e-7, # average two-qubit gate duration
-                't_meas': 1e-6, # average measurement duration
-                't_overhead': 2e-4, # device/control overhead
-                'e1q': 5e-4, # average one-qubit gate error
-                'e2q': 3e-3, # average two-qubit gate error
-            },
-            'Bosonic': {
-                't1q': 1e-6,
-                't2q': 3e-5,
-                't_meas': 4e-4,
-                't_overhead': 1e-3,
-                'e1q': 1e-6,
-                'e2q': 1e-4,
-            },
-        },
-        'P_SUCCESS_FLOOR': 1e-300,
-        'TTS_PLOT_MAX': 1e+12,
-        'GROWTH_SWEEP_MAX_N': 126,
-        'IBM_OPTIMIZATION_LEVEL': 1, # just to speed things up
     }
 
 
@@ -892,6 +854,49 @@ def _():
     return
 
 
+@app.cell
+def _():
+    device_df = pd.DataFrame(
+        [
+            {
+                "backend": "IBM",
+                "t1q": 2e-8,
+                "t2q": 2e-7,
+                "t_meas": 1e-6,
+                "t_overhead": 2e-4,
+                "e1q": 5e-4,
+                "e2q": 3e-3,
+            },
+            {
+                "backend": "Bosonic",
+                "t1q": 1e-6,
+                "t2q": 3e-5,
+                "t_meas": 4e-4,
+                "t_overhead": 1e-3,
+                "e1q": 1e-6,
+                "e2q": 1e-4,
+            },
+        ]
+    )
+    device_df
+    return (device_df,)
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    We can merge this device data directly into our experiment data to compute execution times at each row.
+    """)
+    return
+
+
+@app.cell
+def _(device_df, scaling_df):
+    _merged = scaling_df.merge(device_df, on='backend')
+    _merged.loc[:, _merged.columns != 'circuit']
+    return
+
+
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
@@ -921,13 +926,13 @@ def _():
 
 
 @app.function
-def T_shot(circuit_data, device=TTS_CFG['IBM_TIMING']):
+def T_shot(data):
     t_compute = (
-        device['t1q'] * circuit_data['single_qubit_count'] + 
-        device['t2q'] *  circuit_data['two_qubit_count'] + 
-        device['t_meas'] * circuit_data['measure_count']
+        data['t1q'] * data['single_qubit_count'] + 
+        data['t2q'] *  data['two_qubit_count'] + 
+        data['t_meas'] * data['measure_count']
     )
-    return t_compute + device['t_overhead']
+    return t_compute + data['t_overhead']
 
 
 @app.cell(hide_code=True)
@@ -950,11 +955,11 @@ def _():
 
 
 @app.function
-def shot_success_log_prob(circuit_data, device=TTS_CFG['IBM_TIMING']):
+def shot_success_log_prob(data):
     """Independent-gate success proxy from 1Q/2Q error rates."""
     return (
-        circuit_data['single_qubit_count'] * np.log1p(-device['e1q']) + 
-        circuit_data['two_qubit_count'] * np.log1p(-device['e2q'])
+        data['single_qubit_count'] * np.log1p(-data['e1q']) + 
+        data['two_qubit_count'] * np.log1p(-data['e2q'])
     )
 
 
@@ -983,31 +988,15 @@ def _():
 
 
 @app.function
-def tts_data_series(circuit_data, shots=TTS_CFG['SHOTS']):
-    device = TTS_CFG['TIMING'][circuit_data['backend']]
-    data = {'log_pr_success': shot_success_log_prob(circuit_data, device=device)}
-    data['t_shot'] = T_shot(circuit_data, device=device)
+def tts_data_series(df, shots=TTS_CFG['SHOTS']):
+    data = {'log_pr_success': shot_success_log_prob(df)}
+    data['t_shot'] = T_shot(df)
     data['log_t_shot'] = np.log(data['t_shot'])
-    data['t_shot_compute'] = data['t_shot'] - device['t_overhead']
+    data['t_shot_compute'] = data['t_shot'] - df['t_overhead']
     data['log_tts_ideal'] = np.log(shots) + np.log(data['t_shot'])
     data['log_tts'] = data['log_tts_ideal'] - data['log_pr_success']
     data['tts'] = np.exp(data['log_tts'])
     return pd.Series(data)
-
-
-@app.cell(hide_code=True)
-def _():
-    mo.md(r"""
-    Let's test out this function for a simple $n=3$ circuit:
-    """)
-    return
-
-
-@app.cell
-def _(scaling_df):
-    _filter_rows = (scaling_df['n'] == 3) & (scaling_df['backend'] == 'IBM')
-    tts_data_series(scaling_df.loc[_filter_rows, :].iloc[0])
-    return
 
 
 @app.cell(hide_code=True)
@@ -1019,8 +1008,11 @@ def _():
 
 
 @app.cell
-def _(scaling_df):
-    tts_df = scaling_df.join(scaling_df.apply(tts_data_series, axis=1))
+def _(device_df, scaling_df):
+    tts_df = scaling_df.join(
+        scaling_df.merge(device_df, on='backend').apply(tts_data_series, axis=1)
+    )
+    tts_df.loc[:, tts_df.columns != 'circuit']
     return (tts_df,)
 
 
@@ -1223,8 +1215,10 @@ def _():
 
 
 @app.cell
-def _(pred_df):
-    extrapolation_df = pred_df.join(pred_df.apply(tts_data_series, axis=1))
+def _(device_df, pred_df):
+    extrapolation_df = pred_df.join(
+        pred_df.merge(device_df, on='backend').apply(tts_data_series, axis=1)
+    )
     return (extrapolation_df,)
 
 
@@ -1444,10 +1438,12 @@ def _():
 
 
 @app.cell(disabled=True)
-def _(your_circuit_df):
+def _(device_df, your_circuit_df):
     _your_metrics = lambda g: pd.Series(circuit_metrics(g['circuit']))
     your_scaling_df = your_circuit_df.join(your_circuit_df.apply(_your_metrics, axis=1))
-    your_tts_df = your_scaling_df.join(your_scaling_df.apply(tts_data_series, axis=1))
+    your_tts_df = your_scaling_df.join(
+        your_scaling_df.merge(device_df, on='backend').apply(tts_data_series, axis=1)
+    )
     your_tts_df.loc[:, your_tts_df.columns != 'circuit']
     return your_scaling_df, your_tts_df
 
