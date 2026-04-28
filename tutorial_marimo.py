@@ -31,7 +31,7 @@
 
 import marimo
 
-__generated_with = "0.23.2"
+__generated_with = "0.23.3"
 app = marimo.App(width="full")
 
 with app.setup(hide_code=True):
@@ -1372,14 +1372,7 @@ def _():
 
 
 @app.cell(disabled=True)
-def _(
-    TTS_CFG,
-    YOUR_BOSONIC_QUBITS_PER_TRAP,
-    YOUR_N_LIST,
-    circuit_fn,
-    scale_bosonic,
-    scale_ibm,
-):
+def _(YOUR_BOSONIC_QUBITS_PER_TRAP, YOUR_N_LIST, circuit_fn, scale_ibm):
     your_circuits = []
     for n in YOUR_N_LIST:
         print(f'Compiling circuit_fn({n}) for IBM')
@@ -1411,7 +1404,7 @@ def _():
 
 
 @app.cell(disabled=True)
-def _(circuit_metrics, tts_data_series, your_circuit_df):
+def _(your_circuit_df):
     _your_metrics = lambda g: pd.Series(circuit_metrics(g['circuit']))
     your_scaling_df = your_circuit_df.join(your_circuit_df.apply(_your_metrics, axis=1))
     your_tts_df = your_scaling_df.join(your_scaling_df.apply(tts_data_series, axis=1))
@@ -1428,7 +1421,7 @@ def _():
 
 
 @app.cell(disabled=True)
-def _(YOUR_METRICS_TO_PLOT, plot_scaling_metric, your_tts_df):
+def _(YOUR_METRICS_TO_PLOT, your_tts_df):
     for _metric in YOUR_METRICS_TO_PLOT:
         plot_scaling_metric(
             your_tts_df,
@@ -1448,7 +1441,7 @@ def _():
 
 
 @app.cell(disabled=True)
-def _(YOUR_N_EXTRAP, gate_count_prediction, tts_data_series, your_scaling_df):
+def _(YOUR_N_EXTRAP, your_scaling_df):
     your_fit_df = your_scaling_df.melt(
         id_vars=['backend', 'n'],
         value_vars=['single_qubit_count', 'two_qubit_count', 'measure_count'],
@@ -1469,11 +1462,11 @@ def _(YOUR_N_EXTRAP, gate_count_prediction, tts_data_series, your_scaling_df):
     your_pred_df = gate_count_prediction(your_fits, YOUR_N_EXTRAP)
     your_extrapolation_df = your_pred_df.join(your_pred_df.apply(tts_data_series, axis=1))
     your_extrapolation_df
-    return your_extrapolation_df, your_fit_df, your_fits, your_pred_df
+    return (your_extrapolation_df,)
 
 
 @app.cell(disabled=True)
-def _(plot_scaling_metric, your_extrapolation_df):
+def _(your_extrapolation_df):
     plot_scaling_metric(
         your_extrapolation_df,
         'two_qubit_count',
