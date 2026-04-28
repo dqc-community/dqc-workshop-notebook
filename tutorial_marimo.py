@@ -8,8 +8,7 @@
 #     "qiskit>=1.0",
 #     "qiskit-aer",
 #     "qiskit-ibm-runtime",
-#     "bosonic-sdk",
-#     "bosonic-disqco",
+#     "bosonic-sdk[disqco,hypergraph]",
 # ]
 #
 # [[tool.uv.index]]
@@ -24,15 +23,16 @@
 #
 # [tool.uv.sources]
 # bosonic-sdk = { index = "test-pypi" }
-# bosonic-disqco = { index = "test-pypi" }
 # ///
 #
 # NOTE: Run with UV_INDEX_STRATEGY=unsafe-best-match for sandbox mode
 # e.g., UV_INDEX_STRATEGY=unsafe-best-match marimo edit --sandbox tutorial_marimo.py
+#
+# NOTE: replace bosonic-sdk[disqco,hypergraph] -> bosonic-sdk[disqco] on windows - hypergraph distributor is not supported on windows yet
 
 import marimo
 
-__generated_with = "0.23.2"
+__generated_with = "0.23.3"
 app = marimo.App(width="medium", css_file="templates/qc-theme.css")
 
 
@@ -272,7 +272,6 @@ def _():
         from bosonic_sdk.distributor.distributors.hypergraph_distributor import HypergraphDistributor
     else:
         HypergraphDistributor = None
-
     return (
         BosonicDistributor,
         CircuitConverters,
@@ -1321,6 +1320,7 @@ def _(
     ]
     if HypergraphDistributor is not None:
         distributor_list.append(('hypergraph', HypergraphDistributor()))
+
     df_your = run_your_benchmark(
         circuit_fn=circuit_fn,
         n_list=YOUR_N_LIST,
