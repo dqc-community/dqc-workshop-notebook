@@ -1133,6 +1133,14 @@ def _(df_linear_fit):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
+ 
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
     Now if we add `n` as a column, we can compute the predicted `gate_count` in each row:
     """)
     return
@@ -1172,7 +1180,21 @@ def _():
 
 
 @app.function
-def gate_count_prediction(fits, nvals):
+def gate_count_prediction(df, nvals):
+    def _fit(g):
+        slope, intercept = np.polyfit(g['n'], g['gate_count'], 1)
+        return pd.Series({'slope': slope, 'intercept': intercept})
+        
+    fits = (
+        df.melt(
+            id_vars = ['backend', 'n'],
+            value_vars = ['single_qubit_count', 'two_qubit_count', 'measure_count'],
+            var_name = 'gate_type',
+            value_name = 'gate_count',
+        ).groupby(['backend', 'gate_type'])
+        .apply(_fit, include_groups=False)
+        .reset_index()
+    )
     preds = fits.merge(pd.DataFrame({'n': nvals}), how='cross')
     preds['gate_count_predicted'] = np.ceil(
         preds['intercept'] + preds['slope'] * preds['n']
@@ -1186,8 +1208,8 @@ def gate_count_prediction(fits, nvals):
 
 
 @app.cell
-def _(fits):
-    pred_df = gate_count_prediction(fits, np.logspace(1, 5, 24).astype(int))
+def _(scaling_df):
+    pred_df = gate_count_prediction(scaling_df, np.logspace(1, 5, 24).astype(int))
     pred_df
     return (pred_df,)
 
@@ -1280,15 +1302,24 @@ def _(FAKE_IBM_BACKEND):
     return
 
 
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    Since transpilation is non-deterministic, transpiling the same circuit multiple times results in a distribution of outcomes. (How would you modify the earlier experiments to use this information?)
+    """)
+    return
+
+
 @app.cell
 def _(FAKE_IBM_BACKEND):
-    def _duration(n):
+    def _duration(circuit):
         transpiled =  qiskit.transpile(
-            ghz_circuit(7), backend=FAKE_IBM_BACKEND, optimization_level=3
+            circuit, backend=FAKE_IBM_BACKEND, optimization_level=3
         )
         return transpiled.estimate_duration(target=FAKE_IBM_BACKEND.target)
 
-    plt.hist(pd.DataFrame({'duration': [_duration(10) for _ in range(100)]}))
+    _circuit = ghz_circuit(7)
+    plt.hist(pd.DataFrame({'duration': [_duration(_circuit) for _ in range(100)]}))
     return
 
 
@@ -1330,10 +1361,12 @@ def _():
 
 @app.cell(disabled=True)
 def _():
-    YOUR_N_LIST = range(9, 46, 9)
-    YOUR_N_EXTRAP = np.unique(np.logspace(1, 5, 24).astype(int)).tolist()
-    YOUR_BOSONIC_QUBITS_PER_TRAP = 20
-    YOUR_METRICS_TO_PLOT = ['two_qubit_count', 'single_qubit_count', 'total_ops']
+    YOUR_CFG = {
+        'N_LIST': range(9, 46, 9),
+        'N_EXTRAP': np.logspace(1, 5, 24).astype(int),
+        'QUBITS_PER_TRAP': 20,
+        'PLOT_METRICS':  ['two_qubit_count', 'single_qubit_count', 'total_ops']
+    }
 
     # Default is a Shor 9 Qubit error correcting circuit 
     def circuit_fn(n: int):
@@ -1354,13 +1387,7 @@ def _():
         _qc.measure(range(n), range(n))
         return _qc
 
-    return (
-        YOUR_BOSONIC_QUBITS_PER_TRAP,
-        YOUR_METRICS_TO_PLOT,
-        YOUR_N_EXTRAP,
-        YOUR_N_LIST,
-        circuit_fn,
-    )
+    return YOUR_CFG, circuit_fn
 
 
 @app.cell(hide_code=True)
@@ -1372,25 +1399,38 @@ def _():
 
 
 @app.cell(disabled=True)
-def _(YOUR_BOSONIC_QUBITS_PER_TRAP, YOUR_N_LIST, circuit_fn, scale_ibm):
-    your_circuits = []
-    for n in YOUR_N_LIST:
-        print(f'Compiling circuit_fn({n}) for IBM')
-        your_circuits.append(
-            scale_ibm(n, constructor=circuit_fn, optimization_level=TTS_CFG['IBM_OPTIMIZATION_LEVEL'])
+def _(YOUR_CFG, circuit_fn, scale_ibm):
+    if mo.running_in_notebook():
+        _iter = mo.status.progress_bar(
+            YOUR_CFG['N_LIST'],
+            title='Compiling your circuits',
+            subtitle='Monolithic IBM backend',
         )
+    else:
+        _iter = YOUR_CFG['N_LIST']
 
-    for n in YOUR_N_LIST:
-        print(f'Compiling circuit_fn({n}) for Bosonic')
-        your_circuits.append(
-            scale_bosonic(
-                n,
-                constructor=circuit_fn,
-                qubits_per_trap=YOUR_BOSONIC_QUBITS_PER_TRAP,
-            )
+    your_ibm = [scale_ibm(n, optimization_level=3, constructor=circuit_fn) for n in _iter]
+    return (your_ibm,)
+
+
+@app.cell(disabled=True)
+def _(YOUR_CFG, circuit_fn):
+    if mo.running_in_notebook():
+        _iter = mo.status.progress_bar(
+            YOUR_CFG['N_LIST'],
+            title='Compiling your circuits',
+            subtitle='Distributed Bosonic backend',
         )
+    else:
+        _iter = YOUR_CFG['N_LIST']
 
-    your_circuit_df = pd.DataFrame(your_circuits)
+    your_bosonic = [scale_bosonic(n, constructor=circuit_fn) for n in _iter]
+    return (your_bosonic,)
+
+
+@app.cell(disabled=True)
+def _(your_bosonic, your_ibm):
+    your_circuit_df = pd.DataFrame(your_ibm + your_bosonic)
     your_circuit_df.loc[:, your_circuit_df.columns != 'circuit']
     return (your_circuit_df,)
 
@@ -1421,13 +1461,12 @@ def _():
 
 
 @app.cell(disabled=True)
-def _(YOUR_METRICS_TO_PLOT, your_tts_df):
-    for _metric in YOUR_METRICS_TO_PLOT:
+def _(YOUR_CFG, your_tts_df):
+    for _metric in YOUR_CFG['PLOT_METRICS']:
         plot_scaling_metric(
             your_tts_df,
             _metric,
             title='Your Circuit Scaling',
-            ylabel=_metric,
         )
     return
 
@@ -1441,27 +1480,9 @@ def _():
 
 
 @app.cell(disabled=True)
-def _(YOUR_N_EXTRAP, your_scaling_df):
-    your_fit_df = your_scaling_df.melt(
-        id_vars=['backend', 'n'],
-        value_vars=['single_qubit_count', 'two_qubit_count', 'measure_count'],
-        var_name='gate_type',
-        value_name='gate_count',
-    )
-
-    def _fit_your_circuit(g):
-        slope, intercept = np.polyfit(g['n'], g['gate_count'], 1)
-        return pd.Series({'slope': slope, 'intercept': intercept})
-
-    your_fits = (
-        your_fit_df.groupby(['backend', 'gate_type'])
-        .apply(_fit_your_circuit, include_groups=False)
-        .reset_index()
-    )
-
-    your_pred_df = gate_count_prediction(your_fits, YOUR_N_EXTRAP)
+def _(YOUR_CFG, your_scaling_df):
+    your_pred_df = gate_count_prediction(your_scaling_df, YOUR_CFG['N_EXTRAP'])
     your_extrapolation_df = your_pred_df.join(your_pred_df.apply(tts_data_series, axis=1))
-    your_extrapolation_df
     return (your_extrapolation_df,)
 
 
