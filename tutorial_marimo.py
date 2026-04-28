@@ -1,30 +1,30 @@
-# /// script-disabled
+# /// script
 # requires-python = "==3.10.*"
 # dependencies = [
 #     "ipykernel",
 #     "marimo",
 #     "pandas",
 #     "matplotlib",
+#     "scikit-learn",
 #     "qiskit>=1.0",
 #     "qiskit-aer",
 #     "qiskit-ibm-runtime",
 #     "bosonic-sdk[disqco,hypergraph]",
 # ]
-#
+# 
 # [[tool.uv.index]]
 # name = "test-pypi"
 # url = "https://test.pypi.org/simple/"
 # default = false
-#
+# 
 # [[tool.uv.index]]
 # name = "pypi"
 # url = "https://pypi.org/simple/"
 # default = true
-#
+# 
 # [tool.uv.sources]
 # bosonic-sdk = { index = "test-pypi" }
-# bosonic-disqco = { index = "test-pypi" }
-#
+# 
 # [tool.uv]
 # index-strategy = "unsafe-best-match"
 # ///
