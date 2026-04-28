@@ -8,8 +8,7 @@
 #     "qiskit>=1.0",
 #     "qiskit-aer",
 #     "qiskit-ibm-runtime",
-#     "bosonic-sdk",
-#     "bosonic-disqco",
+#     "bosonic-sdk[disqco,hypergraph]",
 # ]
 #
 # [[tool.uv.index]]

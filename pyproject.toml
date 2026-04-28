@@ -13,8 +13,7 @@ dependencies = [
     "qiskit>=1.0",
     "qiskit-aer",
     "qiskit-ibm-runtime",
-    "bosonic-sdk",
-    "bosonic-disqco",
+    "bosonic-sdk[disqco,hypergraph]",
 ]
 
 [[tool.uv.index]]
@@ -29,7 +28,6 @@ default = true
 
 [tool.uv.sources]
 bosonic-sdk = { index = "test-pypi" }
-bosonic-disqco = { index = "test-pypi" }
 
 [tool.uv]
 index-strategy = "unsafe-best-match"
