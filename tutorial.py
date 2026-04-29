@@ -31,7 +31,7 @@
 
 import marimo
 
-__generated_with = "0.23.3"
+__generated_with = "0.23.4"
 app = marimo.App(width="full")
 
 with app.setup(hide_code=True):
@@ -47,8 +47,10 @@ with app.setup(hide_code=True):
     # qiskit
     # we avoid the pattern `from qiskit.submodule import Class` to make it clear in each cell where each function/class comes from
     import qiskit
+    import qiskit.visualization
     import qiskit_ibm_runtime
     import qiskit_aer
+    from qiskit.exceptions import MissingOptionalLibraryError
 
     # bosonic
     import bosonic_sdk
@@ -243,7 +245,21 @@ def _():
 @app.cell
 def load_sherbrooke_1():
     FAKE_IBM_BACKEND = qiskit_ibm_runtime.fake_provider.FakeSherbrooke()
-    qiskit.visualization.plot_gate_map(FAKE_IBM_BACKEND)
+    try:
+        qiskit.visualization.plot_gate_map(FAKE_IBM_BACKEND)
+    except MissingOptionalLibraryError:
+        import networkx as nx
+
+        _graph = nx.Graph()
+        _graph.add_nodes_from(range(FAKE_IBM_BACKEND.num_qubits))
+        _graph.add_edges_from(FAKE_IBM_BACKEND.coupling_map.get_edges())
+        _pos = nx.spring_layout(_graph, seed=VERIFY_CFG['SEED'])
+        plt.figure(figsize=(8, 8))
+        nx.draw_networkx_edges(_graph, _pos, alpha=0.25, width=0.8)
+        nx.draw_networkx_nodes(_graph, _pos, node_size=55)
+        plt.title('FakeSherbrooke Coupling Map')
+        plt.axis('off')
+        plt.show()
     return (FAKE_IBM_BACKEND,)
 
 
@@ -1176,7 +1192,7 @@ def gate_count_prediction(df, nvals):
     def _fit(g):
         slope, intercept = np.polyfit(g['n'], g['gate_count'], 1)
         return pd.Series({'slope': slope, 'intercept': intercept})
-        
+
     fits = (
         df.melt(
             id_vars = ['backend', 'n'],
