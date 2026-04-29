@@ -5,6 +5,7 @@
 #     "marimo",
 #     "pandas",
 #     "matplotlib",
+#     "networkx",
 #     "scikit-learn",
 #     "qiskit>=1.0",
 #     "qiskit-aer",
@@ -42,6 +43,7 @@ with app.setup(hide_code=True):
     # standard/numerical
     import numpy as np
     import matplotlib.pyplot as plt
+    import networkx as nx
     import pandas as pd
 
     # qiskit
@@ -248,8 +250,6 @@ def load_sherbrooke_1():
     try:
         qiskit.visualization.plot_gate_map(FAKE_IBM_BACKEND)
     except MissingOptionalLibraryError:
-        import networkx as nx
-
         _graph = nx.Graph()
         _graph.add_nodes_from(range(FAKE_IBM_BACKEND.num_qubits))
         _graph.add_edges_from(FAKE_IBM_BACKEND.coupling_map.get_edges())
