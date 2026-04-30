@@ -1,6 +1,6 @@
 # DQC Workshop Notebook
 
-This repository contains materials for the DQC tutorial workshop.
+This repository contains materials for the distributed quantum computing (DQC) tutorial workshop. Slides for the workshop are hosted separately at [this URL](https://pitch.com/v/distributed-quantum-computing-cjfvmx).
 
 ## Quick Start
 
@@ -12,8 +12,7 @@ uvx marimo edit --sandbox https://github.com/dqc-community/dqc-workshop-notebook
 
 ## Requirements
 
-- Python 3.10+
-- [uv](https://github.com/astral-sh/uv)
+- [uv](https://github.com/astral-sh/uv) (handles installing the correct version of Python and all dependencies)
 
 ## Development
 
