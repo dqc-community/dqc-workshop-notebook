@@ -247,20 +247,24 @@ def _():
 @app.cell
 def load_sherbrooke_1():
     FAKE_IBM_BACKEND = qiskit_ibm_runtime.fake_provider.FakeSherbrooke()
-    try:
-        qiskit.visualization.plot_gate_map(FAKE_IBM_BACKEND)
-    except MissingOptionalLibraryError:
-        _graph = nx.Graph()
-        _graph.add_nodes_from(range(FAKE_IBM_BACKEND.num_qubits))
-        _graph.add_edges_from(FAKE_IBM_BACKEND.coupling_map.get_edges())
-        _pos = nx.spring_layout(_graph, seed=VERIFY_CFG['SEED'])
-        plt.figure(figsize=(8, 8))
-        nx.draw_networkx_edges(_graph, _pos, alpha=0.25, width=0.8)
-        nx.draw_networkx_nodes(_graph, _pos, node_size=55)
-        plt.title('FakeSherbrooke Coupling Map')
-        plt.axis('off')
-        plt.show()
     return (FAKE_IBM_BACKEND,)
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    We can use Qiskit to visualize the qubit layout of the processor:
+    """)
+    return
+
+
+@app.cell
+def _(FAKE_IBM_BACKEND):
+    if qiskit.utils.optionals.HAS_GRAPHVIZ:
+        qiskit.visualization.plot_gate_map(FAKE_IBM_BACKEND)
+    else:
+        print("Missing graphviz dependency!")
+    return
 
 
 @app.cell(hide_code=True)
