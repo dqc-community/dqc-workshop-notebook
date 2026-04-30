@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = "==3.10.*"
 dependencies = [
     "ipykernel",
-    "marimo",
+    "marimo[mcp]",
     "pandas",
     "matplotlib",
     "scikit-learn",

@@ -2,7 +2,7 @@
 # requires-python = "==3.10.*"
 # dependencies = [
 #     "ipykernel",
-#     "marimo",
+#     "marimo[mcp]",
 #     "pandas",
 #     "matplotlib",
 #     "networkx",
@@ -12,20 +12,20 @@
 #     "qiskit-ibm-runtime",
 #     "bosonic-sdk[disqco,hypergraph]",
 # ]
-# 
+#
 # [[tool.uv.index]]
 # name = "test-pypi"
 # url = "https://test.pypi.org/simple/"
 # default = false
-# 
+#
 # [[tool.uv.index]]
 # name = "pypi"
 # url = "https://pypi.org/simple/"
 # default = true
-# 
+#
 # [tool.uv.sources]
 # bosonic-sdk = { index = "test-pypi" }
-# 
+#
 # [tool.uv]
 # index-strategy = "unsafe-best-match"
 # ///
@@ -565,8 +565,8 @@ def _(verify_df):
     for _backend in ['IBM', 'Bosonic']:
         subdf = verify_df[verify_df['backend'] == _backend]
         plt.scatter(
-            subdf['count0'] / VERIFY_CFG['SHOTS'], 
-            subdf['count1'] / VERIFY_CFG['SHOTS'], 
+            subdf['count0'] / VERIFY_CFG['SHOTS'],
+            subdf['count1'] / VERIFY_CFG['SHOTS'],
             label=_backend,
             alpha=0.5,
         )
@@ -945,8 +945,8 @@ def _():
 @app.function
 def T_shot(data):
     t_compute = (
-        data['t1q'] * data['single_qubit_count'] + 
-        data['t2q'] *  data['two_qubit_count'] + 
+        data['t1q'] * data['single_qubit_count'] +
+        data['t2q'] *  data['two_qubit_count'] +
         data['t_meas'] * data['measure_count']
     )
     return t_compute + data['t_overhead']
@@ -975,7 +975,7 @@ def _():
 def shot_success_log_prob(data):
     """Independent-gate success proxy from 1Q/2Q error rates."""
     return (
-        data['single_qubit_count'] * np.log1p(-data['e1q']) + 
+        data['single_qubit_count'] * np.log1p(-data['e1q']) +
         data['two_qubit_count'] * np.log1p(-data['e2q'])
     )
 
@@ -1142,7 +1142,7 @@ def _(df_linear_fit):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
- 
+
     """)
     return
 
@@ -1252,8 +1252,8 @@ def _():
 @app.cell
 def _(extrapolation_df):
     plot_scaling_metric(
-        extrapolation_df, 'two_qubit_count', 
-        title='Extrapolated GHZ Scaling', 
+        extrapolation_df, 'two_qubit_count',
+        title='Extrapolated GHZ Scaling',
         xscale='log', yscale='log', ylabel='Projected Two-Qubit Gate Count'
     )
     return
@@ -1263,8 +1263,8 @@ def _(extrapolation_df):
 def _(extrapolation_df):
     # TODO: add ylim handling
     plot_scaling_metric(
-        extrapolation_df, 'log_tts', 
-        title='Extrapolated GHZ Scaling', 
+        extrapolation_df, 'log_tts',
+        title='Extrapolated GHZ Scaling',
         xscale='log', yscale='linear', ylabel='Log Time-to-Solution (seconds)'
     )
     return
@@ -1306,8 +1306,8 @@ def _():
 def _(FAKE_IBM_BACKEND):
     # compilation is non-deterministic – run this cell a few times to see the changes
     qiskit.visualization.timeline.draw(
-        qiskit.transpile(ghz_circuit(7), backend=FAKE_IBM_BACKEND, optimization_level=3), 
-        target=FAKE_IBM_BACKEND.target, 
+        qiskit.transpile(ghz_circuit(7), backend=FAKE_IBM_BACKEND, optimization_level=3),
+        target=FAKE_IBM_BACKEND.target,
         show_idle=False,
     )
     return
@@ -1379,7 +1379,7 @@ def _():
         'PLOT_METRICS':  ['two_qubit_count', 'single_qubit_count', 'total_ops']
     }
 
-    # Default is a Shor 9 Qubit error correcting circuit 
+    # Default is a Shor 9 Qubit error correcting circuit
     def circuit_fn(n: int):
         if n % 9 != 0 or n < 9:
             raise ValueError('Use n as a positive multiple of 9 (e.g., 9, 18, 27, ...).')
