@@ -5,6 +5,7 @@
 #     "marimo",
 #     "pandas",
 #     "matplotlib",
+#     "networkx",
 #     "scikit-learn",
 #     "qiskit>=1.0",
 #     "qiskit-aer",
@@ -31,7 +32,7 @@
 
 import marimo
 
-__generated_with = "0.23.3"
+__generated_with = "0.23.4"
 app = marimo.App(width="full")
 
 with app.setup(hide_code=True):
@@ -42,13 +43,16 @@ with app.setup(hide_code=True):
     # standard/numerical
     import numpy as np
     import matplotlib.pyplot as plt
+    import networkx as nx
     import pandas as pd
 
     # qiskit
     # we avoid the pattern `from qiskit.submodule import Class` to make it clear in each cell where each function/class comes from
     import qiskit
+    import qiskit.visualization
     import qiskit_ibm_runtime
     import qiskit_aer
+    from qiskit.exceptions import MissingOptionalLibraryError
 
     # bosonic
     import bosonic_sdk
@@ -243,8 +247,21 @@ def _():
 @app.cell
 def load_sherbrooke_1():
     FAKE_IBM_BACKEND = qiskit_ibm_runtime.fake_provider.FakeSherbrooke()
-    qiskit.visualization.plot_gate_map(FAKE_IBM_BACKEND)
     return (FAKE_IBM_BACKEND,)
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    We can use Qiskit to visualize the qubit layout of the processor:
+    """)
+    return
+
+
+@app.cell
+def _(FAKE_IBM_BACKEND):
+    qiskit.visualization.plot_gate_map(FAKE_IBM_BACKEND) if qiskit.utils.optionals.HAS_GRAPHVIZ else 'Missing graphviz dependency!'
+    return
 
 
 @app.cell(hide_code=True)
@@ -1176,7 +1193,7 @@ def gate_count_prediction(df, nvals):
     def _fit(g):
         slope, intercept = np.polyfit(g['n'], g['gate_count'], 1)
         return pd.Series({'slope': slope, 'intercept': intercept})
-        
+
     fits = (
         df.melt(
             id_vars = ['backend', 'n'],
