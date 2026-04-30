@@ -260,10 +260,7 @@ def _():
 
 @app.cell
 def _(FAKE_IBM_BACKEND):
-    if qiskit.utils.optionals.HAS_GRAPHVIZ:
-        qiskit.visualization.plot_gate_map(FAKE_IBM_BACKEND)
-    else:
-        print("Missing graphviz dependency!")
+    qiskit.visualization.plot_gate_map(FAKE_IBM_BACKEND) if qiskit.utils.optionals.HAS_GRAPHVIZ else 'Missing graphviz dependency!'
     return
 
 
