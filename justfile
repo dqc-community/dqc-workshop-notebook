@@ -10,3 +10,9 @@ mo notebook="tutorial.py":
 #   just mcp
 mcp notebook="tutorial.py" port="2718":
   uv run marimo edit {{notebook}} --mcp --no-token --no-sandbox --port {{port}}
+
+# Usage:
+#   just ipynb tutorial.py
+#   just ipynb
+ipynb notebook="tutorial.py":
+  uv run marimo export ipynb --force {{notebook}} -o $(basename {{notebook}} .py).ipynb
