@@ -88,232 +88,6 @@ with app.setup(hide_code=True):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-    # Bosonic Distributed Trapped-Ion Architecture
-
-    ## What the System Looks Like
-
-    Bosonic's architecture is a **distributed trapped-ion quantum computer with Photonic Interconnects**. This sounds like a mouthful so lets break it down step by step, starting with the fact that Bosonic has a **Distributed** architecture. This neans that instead of building one very large quantum processor, the system is built from many smaller, identical quantum processing units or QPUs, each smaller unit is refered to as a module. Each module is able to act independently and stores local qubits, runs local quantum gates, and communicates with other modules when a circuit needs interactions between qubits that live in different places. We also mentioned that Bosonics architecture is made of **trapped ions**, this means that we use ions trapped in a magnetic field to represent a qubit. A qubit state is given by the ions energy levels and gating can be done by interacting with the ions. Lastly the architecture has **Photonic Interconnects**, this is how modules are able to connect with each other. Bosonic architecture uses special cavities to allow ions in different modules to communicate via emission and absorobtion. **Emmission** refers to an Ion giving off a photon during a drop in energy level and **absorbtion**  refers to an Ion absorbing a photon which raises the energy level of the Ion. Bosonic architecture uses this natural property of Ions to allow for communication between modules, we call the creation of a link via this process a **remote link**.
-
-    Inside each module, ions are held in a static chain. Local gates have **any-to-any** connectivity. That means that when we take a logical circuit and break it down into executable operations by our hardware we do not need to route qubits through a complicated nearest-neighbor layout inside a module. It is useful to separate the ions into two roles. **Workspace/Algorithm qubits** are the data-carrying qubits: they store the logical state of the computation and participate in the ordinary gates of the algorithm, these are the qubits we think of when we see logical circuits. **Communication qubits** are reserved for making remote links to other modules. These communication qubits act like an **entanglement bank**, where shared entanglement with other modules can be created and then consumed by distributed operations.
-
-    Remote links between modules do not directly communicate with each other, rather they are passed through an optical control system which handles the connectivity between modules. Below is a matplotlib diagram to help visualize what a Bosonic system may look like.
-    """)
-    return
-
-
-@app.cell
-def _():
-    def _draw_bosonic_architecture_diagram():
-        # System-level Bosonic architecture diagram
-        fig, ax = plt.subplots(figsize=(12.5, 6.6))
-        ax.set_xlim(0, 14)
-        ax.set_ylim(0, 7)
-        ax.axis('off')
-
-        def box(x, y, w, h, label, fc='#f7f7f7', ec='#333333', lw=1.8, size=10, weight='normal'):
-            patch = FancyBboxPatch(
-                (x, y), w, h,
-                boxstyle='round,pad=0.05,rounding_size=0.08',
-                facecolor=fc,
-                edgecolor=ec,
-                linewidth=lw,
-            )
-            ax.add_patch(patch)
-            ax.text(
-                x + w / 2,
-                y + h / 2,
-                label,
-                ha='center',
-                va='center',
-                fontsize=size,
-                weight=weight,
-                linespacing=1.15,
-            )
-            return patch
-
-        def module(x, y, name):
-            box(x, y, 3.85, 2.15, '', fc='#eef5ff', ec='#2b5c8a', lw=2.0)
-            ax.text(
-                x + 1.925,
-                y + 1.83,
-                name,
-                ha='center',
-                va='center',
-                fontsize=12,
-                weight='bold',
-                color='#1f4e79',
-            )
-            box(x + 0.35, y + 0.58, 1.55, 0.92, 'Workspace\nqubits', fc='#dbeafe', ec='#2b5c8a', size=8.8, weight='bold')
-            box(x + 2.08, y + 0.58, 1.42, 0.92, 'Communication\nqubits', fc='#dcfce7', ec='#2f7d32', size=8.2, weight='bold')
-            ax.annotate(
-                '',
-                xy=(x + 2.08, y + 1.04),
-                xytext=(x + 1.90, y + 1.04),
-                arrowprops=dict(arrowstyle='<->', lw=1.6, color='#333333', shrinkA=3, shrinkB=3),
-            )
-            return (x + 2.79, y + 1.04)
-
-        module(0.65, 4.35, 'Module A')
-        module(9.5, 4.35, 'Module B')
-        module(5.05, 0.55, 'Module C')
-
-        # Anchor arrows on the edges of the communication boxes so they do not cross the text.
-        comm_a_edge = (3.78, 4.93)
-        comm_b_edge = (11.88, 4.93)
-        comm_c_edge = (7.00, 2.70)
-
-        switch_center = (7.0, 3.55)
-        box(5.35, 3.0, 3.3, 1.1, 'Central Optical \nControl System', fc='#fff7ed', ec='#b45309', lw=2.2, size=11.5, weight='bold')
-
-        links = [
-            (comm_a_edge, (5.35, 3.62)),
-            (comm_b_edge, (8.65, 3.62)),
-        ]
-        for start, end in links:
-            ax.annotate(
-                '',
-                xy=end,
-                xytext=start,
-                arrowprops=dict(arrowstyle='<->', lw=2.0, color='#7c3aed', shrinkA=3, shrinkB=3),
-            )
-
-        # Draw the Module C connection manually so it stays visible and avoids labels.
-        ax.annotate(
-            '',
-            xy=(8.00, 2.1),
-            xytext=(8.00, 2.95),
-            arrowprops=dict(arrowstyle='<->', lw=2.0, color='#7c3aed', shrinkA=0, shrinkB=0),
-        )
-
-        ax.text(
-            7.0,
-            7,
-            'Bosonic architecture: modules connected by an optical entanglement network',
-            ha='center',
-            va='center',
-            fontsize=13,
-            weight='bold',
-        )
-        plt.show()
-    _draw_bosonic_architecture_diagram()
-    return
-
-
-@app.cell(hide_code=True)
-def _():
-    mo.md(r"""
-    ## Mapping Circuits to Bosonic Architecture
-
-    Now that we have a rough idea of how the architecture looks like we must think about how it effects our circuits. The main difference is how we handle two qubit gates between qubits in different modules, we now need to create a two qubit gate between a workplace qubit and a communication qubit in the same module, create a remote link between communication qubits in seperate modules, and lastly run a two qubit gate between the communication qubit in the new module with the desired workplace qubit. We already saw that one CNOT gate results in many operations to be executed, as one can imagine the scheme described above for communication between qubits in seperate modules is going to add significant overhead. Below is a circuit diagram that describes what the communication scheme might look like.
-    """)
-    return
-
-
-@app.cell
-def _():
-    def _draw_remote_gate_circuit_sketch():
-        # Remote-gate circuit sketch
-        # This is a Qiskit-style protocol diagram: two modules share an ebit,
-        # use local gates/measurements, and realize an equivalent non-local gate.
-        fig, ax = plt.subplots(figsize=(11.5, 4.2))
-        ax.set_xlim(0, 12)
-        ax.set_ylim(0, 5.4)
-        ax.axis('off')
-
-        black = '#222222'
-        blue = '#9bd3f5'
-        gate_edge = '#4a4a4a'
-
-        # Wire y-positions
-        ya_data = 4.45
-        ya_comm = 3.45
-        yb_data = 1.75
-        yb_comm = 0.75
-
-        # Module labels and braces
-        ax.text(0.42, 3.95, 'Module A', ha='right', va='center', fontsize=13, family='serif')
-        ax.text(0.42, 1.22, 'Module B', ha='right', va='center', fontsize=13, family='serif')
-        ax.text(0.64, 3.95, '{', ha='center', va='center', fontsize=48, family='serif')
-        ax.text(0.64, 1.22, '{', ha='center', va='center', fontsize=48, family='serif')
-
-        # Left-side distributed protocol wires
-        x0, x1 = 0.85, 8.0
-        ax.plot([x0, x1], [ya_data, ya_data], color=black, lw=2)
-        ax.plot([x0, x1], [ya_comm, ya_comm], color=blue, lw=3)
-        ax.plot([x0, x1], [yb_data, yb_data], color=black, lw=2)
-        ax.plot([x0, x1], [yb_comm, yb_comm], color=blue, lw=3)
-
-        # Gate helpers
-        def gate_box(x, y, label, w=0.62, h=0.52, fontsize=14):
-            ax.add_patch(Rectangle((x - w / 2, y - h / 2), w, h, facecolor='white', edgecolor=gate_edge, lw=1.7, zorder=4))
-            ax.text(x, y, label, ha='center', va='center', fontsize=fontsize, zorder=5)
-
-        def control(x, y, filled=True):
-            face = black if filled else 'white'
-            ax.add_patch(Circle((x, y), 0.08, facecolor=face, edgecolor=black, lw=1.6, zorder=6))
-
-        def target(x, y):
-            ax.add_patch(Circle((x, y), 0.16, facecolor='white', edgecolor=black, lw=1.6, zorder=6))
-            ax.plot([x - 0.13, x + 0.13], [y, y], color=black, lw=1.3, zorder=7)
-            ax.plot([x, x], [y - 0.13, y + 0.13], color=black, lw=1.3, zorder=7)
-
-        def vertical(x, y_top, y_bottom, color=black, lw=2):
-            ax.plot([x, x], [y_bottom, y_top], color=color, lw=lw, zorder=3)
-
-        # Ebit preparation between communication qubits
-        x_ebit = 1.55
-        gate_box(x_ebit, ya_comm, '*', fontsize=18)
-        gate_box(x_ebit, yb_comm, '*', fontsize=18)
-        vertical(x_ebit, ya_comm, yb_comm, color=blue, lw=3)
-
-        # Local interaction in Module A
-        x_cnot_a = 2.55
-        vertical(x_cnot_a, ya_data, ya_comm)
-        control(x_cnot_a, ya_data, filled=True)
-        target(x_cnot_a, ya_comm)
-
-        # Measurement on Module A communication qubit
-        x_meas = 3.55
-        gate_box(x_meas, ya_comm, '', w=0.72, h=0.55)
-        ax.add_patch(Arc((x_meas, ya_comm - 0.02), 0.40, 0.28, theta1=20, theta2=160, color=gate_edge, lw=1.5, zorder=6))
-        ax.arrow(x_meas, ya_comm - 0.02, 0.17, 0.16, width=0.01, head_width=0.08, head_length=0.08, color=gate_edge, zorder=7)
-
-        # Classical feed-forward from measured communication qubit to Module B communication qubit
-        x_ff = 5.15
-        vertical(x_ff, ya_comm, yb_comm, color=blue, lw=3)
-        gate_box(x_ff, yb_comm, r'$R_X(\pi)$', w=1.05, h=0.52, fontsize=13)
-        control(x_ff, ya_comm, filled=True)
-
-        # Local interaction in Module B
-        x_cnot_b = 6.55
-        vertical(x_cnot_b, yb_data, yb_comm)
-        target(x_cnot_b, yb_data)
-        control(x_cnot_b, yb_comm, filled=True)
-
-        # Equivalence symbol
-        ax.text(8.65, 2.6, r'$\Longleftrightarrow$', ha='center', va='center', fontsize=24, color=gate_edge)
-
-        # Right-side equivalent non-local gate view
-        xr0, xr1 = 9.35, 10.75
-        ax.plot([xr0, xr1], [ya_data, ya_data], color=black, lw=2)
-        ax.plot([xr0, xr1], [ya_comm, ya_comm], color=blue, lw=3, alpha=0.75)
-        ax.plot([xr0, xr1], [yb_data, yb_data], color=black, lw=2)
-        ax.plot([xr0, xr1], [yb_comm, yb_comm], color=blue, lw=3, alpha=0.75)
-
-        x_eq = 10.05
-        vertical(x_eq, ya_data, yb_data)
-        control(x_eq, ya_data, filled=True)
-        target(x_eq, yb_data)
-
-        ax.set_title('A remote two-qubit gate can be built from ebits, local gates, measurement, and feed-forward', fontsize=12, pad=8)
-        plt.show()
-    _draw_remote_gate_circuit_sketch()
-    return
-
-
-@app.cell(hide_code=True)
-def _():
-    mo.md(r"""
     # Introduction
 
 
@@ -671,6 +445,232 @@ def compile_bosonic_circuit(circuit, n, modules, distributor):
         lowered=True,
     ).as_monolithic_circuit()
     return CircuitConverters.to_qiskit(distributed)
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    # Bosonic Distributed Trapped-Ion Architecture
+
+    ## What the System Looks Like
+
+    Bosonic's architecture is a **distributed trapped-ion quantum computer with Photonic Interconnects**. This sounds like a mouthful so lets break it down step by step, starting with the fact that Bosonic has a **Distributed** architecture. This neans that instead of building one very large quantum processor, the system is built from many smaller, identical quantum processing units or QPUs, each smaller unit is refered to as a module. Each module is able to act independently and stores local qubits, runs local quantum gates, and communicates with other modules when a circuit needs interactions between qubits that live in different places. We also mentioned that Bosonics architecture is made of **trapped ions**, this means that we use ions trapped in a magnetic field to represent a qubit. A qubit state is given by the ions energy levels and gating can be done by interacting with the ions. Lastly the architecture has **Photonic Interconnects**, this is how modules are able to connect with each other. Bosonic architecture uses special cavities to allow ions in different modules to communicate via emission and absorobtion. **Emmission** refers to an Ion giving off a photon during a drop in energy level and **absorbtion**  refers to an Ion absorbing a photon which raises the energy level of the Ion. Bosonic architecture uses this natural property of Ions to allow for communication between modules, we call the creation of a link via this process a **remote link**.
+
+    Inside each module, ions are held in a static chain. Local gates have **any-to-any** connectivity. That means that when we take a logical circuit and break it down into executable operations by our hardware we do not need to route qubits through a complicated nearest-neighbor layout inside a module. It is useful to separate the ions into two roles. **Workspace/Algorithm qubits** are the data-carrying qubits: they store the logical state of the computation and participate in the ordinary gates of the algorithm, these are the qubits we think of when we see logical circuits. **Communication qubits** are reserved for making remote links to other modules. These communication qubits act like an **entanglement bank**, where shared entanglement with other modules can be created and then consumed by distributed operations.
+
+    Remote links between modules do not directly communicate with each other, rather they are passed through an optical control system which handles the connectivity between modules. Below is a matplotlib diagram to help visualize what a Bosonic system may look like.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    def _draw_bosonic_architecture_diagram():
+        # System-level Bosonic architecture diagram
+        fig, ax = plt.subplots(figsize=(12.5, 6.6))
+        ax.set_xlim(0, 14)
+        ax.set_ylim(0, 7)
+        ax.axis('off')
+
+        def box(x, y, w, h, label, fc='#f7f7f7', ec='#333333', lw=1.8, size=10, weight='normal'):
+            patch = FancyBboxPatch(
+                (x, y), w, h,
+                boxstyle='round,pad=0.05,rounding_size=0.08',
+                facecolor=fc,
+                edgecolor=ec,
+                linewidth=lw,
+            )
+            ax.add_patch(patch)
+            ax.text(
+                x + w / 2,
+                y + h / 2,
+                label,
+                ha='center',
+                va='center',
+                fontsize=size,
+                weight=weight,
+                linespacing=1.15,
+            )
+            return patch
+
+        def module(x, y, name):
+            box(x, y, 3.85, 2.15, '', fc='#eef5ff', ec='#2b5c8a', lw=2.0)
+            ax.text(
+                x + 1.925,
+                y + 1.83,
+                name,
+                ha='center',
+                va='center',
+                fontsize=12,
+                weight='bold',
+                color='#1f4e79',
+            )
+            box(x + 0.35, y + 0.58, 1.55, 0.92, 'Workspace\nqubits', fc='#dbeafe', ec='#2b5c8a', size=8.8, weight='bold')
+            box(x + 2.08, y + 0.58, 1.42, 0.92, 'Communication\nqubits', fc='#dcfce7', ec='#2f7d32', size=8.2, weight='bold')
+            ax.annotate(
+                '',
+                xy=(x + 2.08, y + 1.04),
+                xytext=(x + 1.90, y + 1.04),
+                arrowprops=dict(arrowstyle='<->', lw=1.6, color='#333333', shrinkA=3, shrinkB=3),
+            )
+            return (x + 2.79, y + 1.04)
+
+        module(0.65, 4.35, 'Module A')
+        module(9.5, 4.35, 'Module B')
+        module(5.05, 0.55, 'Module C')
+
+        # Anchor arrows on the edges of the communication boxes so they do not cross the text.
+        comm_a_edge = (3.78, 4.93)
+        comm_b_edge = (11.88, 4.93)
+        comm_c_edge = (7.00, 2.70)
+
+        switch_center = (7.0, 3.55)
+        box(5.35, 3.0, 3.3, 1.1, 'Central Optical \nControl System', fc='#fff7ed', ec='#b45309', lw=2.2, size=11.5, weight='bold')
+
+        links = [
+            (comm_a_edge, (5.35, 3.62)),
+            (comm_b_edge, (8.65, 3.62)),
+        ]
+        for start, end in links:
+            ax.annotate(
+                '',
+                xy=end,
+                xytext=start,
+                arrowprops=dict(arrowstyle='<->', lw=2.0, color='#7c3aed', shrinkA=3, shrinkB=3),
+            )
+
+        # Draw the Module C connection manually so it stays visible and avoids labels.
+        ax.annotate(
+            '',
+            xy=(8.00, 2.1),
+            xytext=(8.00, 2.95),
+            arrowprops=dict(arrowstyle='<->', lw=2.0, color='#7c3aed', shrinkA=0, shrinkB=0),
+        )
+
+        ax.text(
+            7.0,
+            7,
+            'Bosonic architecture: modules connected by an optical entanglement network',
+            ha='center',
+            va='center',
+            fontsize=13,
+            weight='bold',
+        )
+        plt.show()
+    _draw_bosonic_architecture_diagram()
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    ## Mapping Circuits to Bosonic Architecture
+
+    Now that we have a rough idea of how the architecture looks like we must think about how it effects our circuits. The main difference is how we handle two qubit gates between qubits in different modules, we now need to create a two qubit gate between a workplace qubit and a communication qubit in the same module, create a remote link between communication qubits in seperate modules, and lastly run a two qubit gate between the communication qubit in the new module with the desired workplace qubit. We already saw that one CNOT gate results in many operations to be executed, as one can imagine the scheme described above for communication between qubits in seperate modules is going to add significant overhead. Below is a circuit diagram that describes what the communication scheme might look like.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    def _draw_remote_gate_circuit_sketch():
+        # Remote-gate circuit sketch
+        # This is a Qiskit-style protocol diagram: two modules share an ebit,
+        # use local gates/measurements, and realize an equivalent non-local gate.
+        fig, ax = plt.subplots(figsize=(11.5, 4.2))
+        ax.set_xlim(0, 12)
+        ax.set_ylim(0, 5.4)
+        ax.axis('off')
+
+        black = '#222222'
+        blue = '#9bd3f5'
+        gate_edge = '#4a4a4a'
+
+        # Wire y-positions
+        ya_data = 4.45
+        ya_comm = 3.45
+        yb_data = 1.75
+        yb_comm = 0.75
+
+        # Module labels and braces
+        ax.text(0.42, 3.95, 'Module A', ha='right', va='center', fontsize=13, family='serif')
+        ax.text(0.42, 1.22, 'Module B', ha='right', va='center', fontsize=13, family='serif')
+        ax.text(0.64, 3.95, '{', ha='center', va='center', fontsize=48, family='serif')
+        ax.text(0.64, 1.22, '{', ha='center', va='center', fontsize=48, family='serif')
+
+        # Left-side distributed protocol wires
+        x0, x1 = 0.85, 8.0
+        ax.plot([x0, x1], [ya_data, ya_data], color=black, lw=2)
+        ax.plot([x0, x1], [ya_comm, ya_comm], color=blue, lw=3)
+        ax.plot([x0, x1], [yb_data, yb_data], color=black, lw=2)
+        ax.plot([x0, x1], [yb_comm, yb_comm], color=blue, lw=3)
+
+        # Gate helpers
+        def gate_box(x, y, label, w=0.62, h=0.52, fontsize=14):
+            ax.add_patch(Rectangle((x - w / 2, y - h / 2), w, h, facecolor='white', edgecolor=gate_edge, lw=1.7, zorder=4))
+            ax.text(x, y, label, ha='center', va='center', fontsize=fontsize, zorder=5)
+
+        def control(x, y, filled=True):
+            face = black if filled else 'white'
+            ax.add_patch(Circle((x, y), 0.08, facecolor=face, edgecolor=black, lw=1.6, zorder=6))
+
+        def target(x, y):
+            ax.add_patch(Circle((x, y), 0.16, facecolor='white', edgecolor=black, lw=1.6, zorder=6))
+            ax.plot([x - 0.13, x + 0.13], [y, y], color=black, lw=1.3, zorder=7)
+            ax.plot([x, x], [y - 0.13, y + 0.13], color=black, lw=1.3, zorder=7)
+
+        def vertical(x, y_top, y_bottom, color=black, lw=2):
+            ax.plot([x, x], [y_bottom, y_top], color=color, lw=lw, zorder=3)
+
+        # Ebit preparation between communication qubits
+        x_ebit = 1.55
+        gate_box(x_ebit, ya_comm, '*', fontsize=18)
+        gate_box(x_ebit, yb_comm, '*', fontsize=18)
+        vertical(x_ebit, ya_comm, yb_comm, color=blue, lw=3)
+
+        # Local interaction in Module A
+        x_cnot_a = 2.55
+        vertical(x_cnot_a, ya_data, ya_comm)
+        control(x_cnot_a, ya_data, filled=True)
+        target(x_cnot_a, ya_comm)
+
+        # Measurement on Module A communication qubit
+        x_meas = 3.55
+        gate_box(x_meas, ya_comm, '', w=0.72, h=0.55)
+        ax.add_patch(Arc((x_meas, ya_comm - 0.02), 0.40, 0.28, theta1=20, theta2=160, color=gate_edge, lw=1.5, zorder=6))
+        ax.arrow(x_meas, ya_comm - 0.02, 0.17, 0.16, width=0.01, head_width=0.08, head_length=0.08, color=gate_edge, zorder=7)
+
+        # Classical feed-forward from measured communication qubit to Module B communication qubit
+        x_ff = 5.15
+        vertical(x_ff, ya_comm, yb_comm, color=blue, lw=3)
+        gate_box(x_ff, yb_comm, r'$R_X(\pi)$', w=1.05, h=0.52, fontsize=13)
+        control(x_ff, ya_comm, filled=True)
+
+        # Local interaction in Module B
+        x_cnot_b = 6.55
+        vertical(x_cnot_b, yb_data, yb_comm)
+        target(x_cnot_b, yb_data)
+        control(x_cnot_b, yb_comm, filled=True)
+
+        # Equivalence symbol
+        ax.text(8.65, 2.6, r'$\Longleftrightarrow$', ha='center', va='center', fontsize=24, color=gate_edge)
+
+        # Right-side equivalent non-local gate view
+        xr0, xr1 = 9.35, 10.75
+        ax.plot([xr0, xr1], [ya_data, ya_data], color=black, lw=2)
+        ax.plot([xr0, xr1], [ya_comm, ya_comm], color=blue, lw=3, alpha=0.75)
+        ax.plot([xr0, xr1], [yb_data, yb_data], color=black, lw=2)
+        ax.plot([xr0, xr1], [yb_comm, yb_comm], color=blue, lw=3, alpha=0.75)
+
+        x_eq = 10.05
+        vertical(x_eq, ya_data, yb_data)
+        control(x_eq, ya_data, filled=True)
+        target(x_eq, yb_data)
+
+        ax.set_title('A remote two-qubit gate can be built from ebits, local gates, measurement, and feed-forward', fontsize=12, pad=8)
+        plt.show()
+    _draw_remote_gate_circuit_sketch()
+    return
 
 
 @app.cell
