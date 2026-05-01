@@ -178,7 +178,7 @@ wheels = [
 
 [[package]]
 name = "bosonic-disqco"
-version = "0.0.7"
+version = "0.0.8"
 source = { registry = "https://test.pypi.org/simple/" }
 dependencies = [
     { name = "ipykernel" },
@@ -193,9 +193,9 @@ dependencies = [
     { name = "qiskit-qasm3-import" },
     { name = "tqdm" },
 ]
-sdist = { url = "https://test-files.pythonhosted.org/packages/44/cc/888b3c4f8eb8330f7409fb802071459d85ce7e03c95a114fbf1f246cba30/bosonic_disqco-0.0.7.tar.gz", hash = "sha256:9ae6a6eeb5a53d189f224d95da4b2dea116670aede217fc1ace627334dcd324e", size = 140841, upload-time = "2026-04-17T01:21:45.031Z" }
+sdist = { url = "https://test-files.pythonhosted.org/packages/d2/2e/770323ad5b7437b8a59cc5cf2cdaebd83dfd577a013e3e14226dc241a6f2/bosonic_disqco-0.0.8.tar.gz", hash = "sha256:ef2a77232276dec633d6e484cd4c2c432f5997dfca1dafedb8a11545455f187c", size = 142762, upload-time = "2026-05-01T07:26:42.005Z" }
 wheels = [
-    { url = "https://test-files.pythonhosted.org/packages/89/2c/c625f11004fa07224f0baa4f1f204c37c68b8c9f628c09b40ea709015c30/bosonic_disqco-0.0.7-py3-none-any.whl", hash = "sha256:6fe0f09a60dcda34faff9530726eb5dcae349926fb0506a6ad152587fa06a31e", size = 162621, upload-time = "2026-04-17T01:21:42.377Z" },
+    { url = "https://test-files.pythonhosted.org/packages/da/34/f2070a87570f64ba5e16108bae666fea31b2448a9dd2725d93ded3202afb/bosonic_disqco-0.0.8-py3-none-any.whl", hash = "sha256:467e12f2f3b95de9c5d1d5464831689bb86b69e440a180686de9b668691566f9", size = 163742, upload-time = "2026-05-01T07:26:40.356Z" },
 ]
 
 [[package]]
@@ -489,7 +489,6 @@ dependencies = [
     { name = "qiskit" },
     { name = "qiskit-aer" },
     { name = "qiskit-ibm-runtime" },
-    { name = "scikit-learn" },
 ]
 
 [package.metadata]
@@ -502,7 +501,6 @@ requires-dist = [
     { name = "qiskit", specifier = ">=1.0" },
     { name = "qiskit-aer" },
     { name = "qiskit-ibm-runtime" },
-    { name = "scikit-learn" },
 ]
 
 [package.metadata.requires-dev]
@@ -822,15 +820,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/df/bf/f7da0350254c0ed7c72f3e33cef02e048281fec7ecec5f032d4aac52226b/jinja2-3.1.6.tar.gz", hash = "sha256:0137fb05990d35f1275a587e9aee6d56da821fc83491a0fb838183be43f66d6d", size = 245115, upload-time = "2025-03-05T20:05:02.478Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/62/a1/3d680cbfd5f4b8f15abc1d571870c5fc3e594bb582bc3b64ea099db13e56/jinja2-3.1.6-py3-none-any.whl", hash = "sha256:85ece4451f492d0c13c5dd7c13a64681a86afae63a5f347908daf103ce6d2f67", size = 134899, upload-time = "2025-03-05T20:05:00.369Z" },
-]
-
-[[package]]
-name = "joblib"
-version = "1.5.3"
-source = { registry = "https://test.pypi.org/simple/" }
-sdist = { url = "https://test-files.pythonhosted.org/packages/15/1c/c7ce0e080cffb7393838629b550dd1dc32c729cf3d5563d98b1451b3fc30/joblib-1.5.3.tar.gz", hash = "sha256:35af2a03df4dee7d437f6e14ac158da424bbd4f9101e1fa4f7b548f2a368eaf8", size = 331608, upload-time = "2025-12-15T08:38:42.425Z" }
-wheels = [
-    { url = "https://test-files.pythonhosted.org/packages/b1/92/009314ab2ee117d58cd454f4636b6b1456a327ad8ecba674348116613aab/joblib-1.5.3-py3-none-any.whl", hash = "sha256:62edfdb377dc7f70be264a5433df6c9bd4bc8478fc492fd2e2a779021186891b", size = 309071, upload-time = "2025-12-15T08:38:40.747Z" },
 ]
 
 [[package]]
@@ -2218,25 +2207,6 @@ wheels = [
 ]
 
 [[package]]
-name = "scikit-learn"
-version = "1.7.2"
-source = { registry = "https://test.pypi.org/simple/" }
-dependencies = [
-    { name = "joblib" },
-    { name = "numpy" },
-    { name = "scipy" },
-    { name = "threadpoolctl" },
-]
-sdist = { url = "https://test-files.pythonhosted.org/packages/98/c2/a7855e41c9d285dfe86dc50b250978105dce513d6e459ea66a6aeb0e1e0c/scikit_learn-1.7.2.tar.gz", hash = "sha256:20e9e49ecd130598f1ca38a1d85090e1a600147b9c02fa6f15d69cb53d968fda", size = 7193136, upload-time = "2025-09-08T09:50:40.873Z" }
-wheels = [
-    { url = "https://test-files.pythonhosted.org/packages/ba/3e/daed796fd69cce768b8788401cc464ea90b306fb196ae1ffed0b98182859/scikit_learn-1.7.2-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:6b33579c10a3081d076ab403df4a4190da4f4432d443521674637677dc91e61f", size = 9336221, upload-time = "2025-09-08T09:49:11.057Z" },
-    { url = "https://test-files.pythonhosted.org/packages/1c/ce/af9d99533b24c55ff4e18d9b7b4d9919bbc6cd8f22fe7a7be01519a347d5/scikit_learn-1.7.2-cp310-cp310-macosx_12_0_arm64.whl", hash = "sha256:36749fb62b3d961b1ce4fedf08fa57a1986cd409eff2d783bca5d4b9b5fce51c", size = 8653834, upload-time = "2025-09-08T09:49:14.539Z" },
-    { url = "https://test-files.pythonhosted.org/packages/58/0e/8c2a03d518fb6bd0b6b0d4b114c63d5f1db01ff0f9925d8eb10960d01c01/scikit_learn-1.7.2-cp310-cp310-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:7a58814265dfc52b3295b1900cfb5701589d30a8bb026c7540f1e9d3499d5ec8", size = 9660938, upload-time = "2025-09-08T09:49:19.138Z" },
-    { url = "https://test-files.pythonhosted.org/packages/2b/75/4311605069b5d220e7cf5adabb38535bd96f0079313cdbb04b291479b22a/scikit_learn-1.7.2-cp310-cp310-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:4a847fea807e278f821a0406ca01e387f97653e284ecbd9750e3ee7c90347f18", size = 9477818, upload-time = "2025-09-08T09:49:22.139Z" },
-    { url = "https://test-files.pythonhosted.org/packages/7f/9b/87961813c34adbca21a6b3f6b2bea344c43b30217a6d24cc437c6147f3e8/scikit_learn-1.7.2-cp310-cp310-win_amd64.whl", hash = "sha256:ca250e6836d10e6f402436d6463d6c0e4d8e0234cfb6a9a47835bd392b852ce5", size = 8886969, upload-time = "2025-09-08T09:49:25.036Z" },
-]
-
-[[package]]
 name = "scipy"
 version = "1.15.3"
 source = { registry = "https://pypi.org/simple/" }
@@ -2388,15 +2358,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/8a/11/965c6fd8e5cc254f1fe142d547387da17a8ebfd75a3455f637c663fb38a0/terminado-0.18.1.tar.gz", hash = "sha256:de09f2c4b85de4765f7714688fff57d3e75bad1f909b589fde880460c753fd2e", size = 32701, upload-time = "2024-03-12T14:34:39.026Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/6a/9e/2064975477fdc887e47ad42157e214526dcad8f317a948dee17e1659a62f/terminado-0.18.1-py3-none-any.whl", hash = "sha256:a4468e1b37bb318f8a86514f65814e1afc977cf29b3992a4500d9dd305dcceb0", size = 14154, upload-time = "2024-03-12T14:34:36.569Z" },
-]
-
-[[package]]
-name = "threadpoolctl"
-version = "3.6.0"
-source = { registry = "https://test.pypi.org/simple/" }
-sdist = { url = "https://test-files.pythonhosted.org/packages/4e/4b/190ba21e9c322fcb4ab8e6040b72049c7295c8002273ebdd4c4bf262fea8/threadpoolctl-3.6.0.tar.gz", hash = "sha256:586cf5f3637c3fdcf33a09170c4b4ded6d650f2ce53e80292145e120016d81ac", size = 21278, upload-time = "2025-03-13T13:28:53.958Z" }
-wheels = [
-    { url = "https://test-files.pythonhosted.org/packages/b4/12/f896106660ce78154ed1f1e11c1b0d09bb0022ea2cd8bb9cc79b113c692b/threadpoolctl-3.6.0-py3-none-any.whl", hash = "sha256:d2fb7d8ca80c3e81de57741b6bd37752521fe9c9640e5987c45d0ad60993cd60", size = 18638, upload-time = "2025-03-13T13:28:52.168Z" },
 ]
 
 [[package]]

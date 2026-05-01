@@ -5,7 +5,6 @@
 #     "marimo[mcp]",
 #     "pandas",
 #     "matplotlib",
-#     "networkx",
 #     "scikit-learn",
 #     "qiskit>=1.0",
 #     "qiskit-aer",
@@ -1310,7 +1309,7 @@ def _(df_linear_fit):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
- 
+
     """)
     return
 
