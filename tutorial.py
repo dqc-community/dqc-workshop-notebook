@@ -5,7 +5,6 @@
 #     "marimo[mcp]",
 #     "pandas",
 #     "matplotlib",
-#     "networkx",
 #     "scikit-learn",
 #     "qiskit>=1.0",
 #     "qiskit-aer",
@@ -43,6 +42,7 @@ with app.setup(hide_code=True):
     # standard/numerical
     import numpy as np
     import matplotlib.pyplot as plt
+    from matplotlib.patches import FancyBboxPatch, Rectangle, Circle, Arc
     import networkx as nx
     import pandas as pd
 
@@ -428,13 +428,138 @@ def _():
     mo.md(r"""
     ## Distributed Circuit Simulation
 
-    Next, we simulate the same circuit distributed over multiple modules using the [Bosonic SDK]([https://](https://github.com/dqc-community/dqcomp)):
+    Next, we simulate the same circuit distributed over multiple modules using the [Bosonic SDK]([https://](https://github.com/dqc-community/dqcomp)) to transpile logical circuits to the qubit layout and instruction set of our hardware architecture.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    Bosonic's architecture is a **distributed trapped-ion quantum computer with photonic interconnects**. This sounds like a mouthful so lets break it down step by step, starting with the fact that Bosonic has a **distributed architecture**. This neans that instead of building one very large quantum processor, the system is built from many smaller, identical quantum processing units (QPUs); each smaller unit is refered to as a _module_. Each module is able to act independently and stores local qubits, runs local quantum gates, and communicates with other modules to perform remote gates.
+
+    Second, Bosonic's architecture is based on **trapped ions** – ions held in place by a magnetic field and used to encode a qubit. A qubit state is given by the ion's energy levels, and we perform entangling gates by interacting with other ions. Inside each module, ions are held in a static chain and have **all-to-all connectivity**, meaning any two qubits in the same chain can entangle directly with each other (i.e., we can perform **transversal gates** ). When we transpile a logical circuit down into physical instructions on our hardware, we do not need to use SWAP chains (or physical shuttling operations!) to entangle two qubits that are not physical neighbors.
+
+    Finally, our architecture uses **photonic interconnects** to connect modules to each other. We use optical cavities (a small pair of mirrors) to improve the way that ions emit and absorb photons. Ions emit photons when their energy level increases, and they absorb photons when it drops. Our architecture uses this natural property of ions to allow for communication between modules, and we call the creation of a link via this process a **remote link**. Remote links by themselves aren't enough to perform remote gates; they generate a **Bell pair** of entangled qubits (or **ebits**) in separate traps, and we can then perform local operations on the ebits to complete the intended logical operation.
+
+    Because of this two-step remote gate procedure, it is conceptually simpler (but not strictly necessary) to treat each physical qubit as either a **data qubit** used for local operations and participation in the logical circuit or a **communication qubit** dedicated to generating Bell pairs for cross-module entanglement. Here's a diagram of an architecture consisting of modules (each with a data qubit register and communication qubit register) linked by an optical network.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    def _draw_bosonic_architecture_diagram():
+        # System-level Bosonic architecture diagram
+        fig, ax = plt.subplots(figsize=(12.5, 6.6))
+        ax.set_xlim(0, 14)
+        ax.set_ylim(0, 7)
+        ax.axis('off')
+
+        def box(x, y, w, h, label, fc='#f7f7f7', ec='#333333', lw=1.8, size=10, weight='normal'):
+            patch = FancyBboxPatch(
+                (x, y), w, h,
+                boxstyle='round,pad=0.05,rounding_size=0.08',
+                facecolor=fc,
+                edgecolor=ec,
+                linewidth=lw,
+            )
+            ax.add_patch(patch)
+            ax.text(
+                x + w / 2,
+                y + h / 2,
+                label,
+                ha='center',
+                va='center',
+                fontsize=size,
+                weight=weight,
+                linespacing=1.15,
+            )
+            return patch
+
+        def module(x, y, name):
+            box(x, y, 3.85, 2.15, '', fc='#eef5ff', ec='#2b5c8a', lw=2.0)
+            ax.text(
+                x + 1.925,
+                y + 1.83,
+                name,
+                ha='center',
+                va='center',
+                fontsize=12,
+                weight='bold',
+                color='#1f4e79',
+            )
+            box(x + 0.35, y + 0.58, 1.55, 0.92, 'Data\nqubits', fc='#dbeafe', ec='#2b5c8a', size=8.8, weight='bold')
+            box(x + 2.08, y + 0.58, 1.42, 0.92, 'Communication\nqubits', fc='#dcfce7', ec='#2f7d32', size=8.2, weight='bold')
+            ax.annotate(
+                '',
+                xy=(x + 2.08, y + 1.04),
+                xytext=(x + 1.90, y + 1.04),
+                arrowprops=dict(arrowstyle='<->', lw=1.6, color='#333333', shrinkA=3, shrinkB=3),
+            )
+            return (x + 2.79, y + 1.04)
+
+        module(0.65, 4.35, 'Module A')
+        module(9.5, 4.35, 'Module B')
+        module(5.05, 0.55, 'Module C')
+
+        # Anchor arrows on the edges of the communication boxes so they do not cross the text.
+        comm_a_edge = (3.78, 4.93)
+        comm_b_edge = (11.88, 4.93)
+        comm_c_edge = (7.00, 2.70)
+
+        switch_center = (7.0, 3.55)
+        box(5.35, 3.0, 3.3, 1.1, 'Central Optical \nControl System', fc='#fff7ed', ec='#b45309', lw=2.2, size=11.5, weight='bold')
+
+        links = [
+            (comm_a_edge, (5.35, 3.62)),
+            (comm_b_edge, (8.65, 3.62)),
+        ]
+        for start, end in links:
+            ax.annotate(
+                '',
+                xy=end,
+                xytext=start,
+                arrowprops=dict(arrowstyle='<->', lw=2.0, color='#7c3aed', shrinkA=3, shrinkB=3),
+            )
+
+        # Draw the Module C connection manually so it stays visible and avoids labels.
+        ax.annotate(
+            '',
+            xy=(8.00, 2.1),
+            xytext=(8.00, 2.95),
+            arrowprops=dict(arrowstyle='<->', lw=2.0, color='#7c3aed', shrinkA=0, shrinkB=0),
+        )
+
+        ax.text(
+            7.0,
+            7,
+            'Bosonic architecture: modules connected by an optical entanglement network',
+            ha='center',
+            va='center',
+            fontsize=13,
+            weight='bold',
+        )
+        plt.show()
+    _draw_bosonic_architecture_diagram()
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    Recall that we specified the monolithic backend's connectivity and native gate set (using the `FakeSherbrooke` backend). What do we need to know about a distributed backend using the architecture we've just described? Since qubit connectivity _within_ a module is all-to-all, and connectivity _across_ modules is also all-to-all, the only thing we need to know is:
+
+    1. The number of modules (`nodes`)
+    2. The number of qubits in each module (`qubits_per_node`)
+    3. The strategy for assigning communication qubits and establishing remote links (a `Distributor` object)
+
+    Because Qiskit doesn't (yet!) have the machinery to handle distribution algorithms, we have to translate circuits out of Qiskit into our own internal representation, transpile them, and then convert them back.
     """)
     return
 
 
 @app.function
-# TODO: explain distributor.distribute API (or write docs upstream and show them here)
 def compile_bosonic_circuit(circuit, n, modules, distributor):
     """Distribute a Qiskit circuit across Bosonic modules and return a Qiskit circuit."""
     distributed = distributor.distribute(
@@ -446,11 +571,45 @@ def compile_bosonic_circuit(circuit, n, modules, distributor):
     return CircuitConverters.to_qiskit(distributed)
 
 
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    The Bosonic SDK lets you choose different `Distributor` objects to use different algorithms to handle the circuit partitioning. The `BosonicDistributor` is the simplest, just directly replacing cross-module gates with the remote link protocol without any attempt to optimize the placement or number of cross-module gates. Let's see what a transpiled circuit looks like!
+    """)
+    return
+
+
 @app.cell
 def _():
-    compile_bosonic_circuit(
-        ghz_circuit(3), 3, 2, bosonic_sdk.BosonicDistributor()
-    ).depth()
+    _n = 3
+    _transpiled = compile_bosonic_circuit(ghz_circuit(_n), _n, 2, bosonic_sdk.BosonicDistributor())
+    mo.vstack([
+        mo.md(f"GHZ circuit with {_n} data qubits has depth {_transpiled.depth()}."),
+        _transpiled.draw('mpl')
+    ])
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    Notice how the remote gates are handled in this transpiled circuit:
+
+    1. The algorithm uses $n=3$ data qubits, with two communication qubits $(q_1, q_5)$ to establish one remote link
+    2. The pair of communication qubits are initialized in $\ket{00}$ and projected by the remote link to the Bell state $\ket{\Psi^-}$
+    3. One of the communication qubits ($q_1$) entangled with a local qubit ($q_0$) and then measured
+    4. The measurement result is used to condition a single-qubit rotation on the other communication qubit ($q_5$) before entangling it with another data qubit ($q_4$)
+
+    This communication overhead is the DQC version of a SWAP chain, but with one important difference: the gate overhead is constant with system size. No matter how many modules the system may have, the cost of distributing entanglement across two of them is the same. Compare this to a monolithic system, where the size and complexity of the system directly contributes to the cost of entangling two distant qubits (more SWAP gates or longer and more complex physical routing).
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    Now that we understand how our distributed transpiler works, let's use it to simulate GHZ circuits:
+    """)
     return
 
 
@@ -474,6 +633,14 @@ def _():
     bosonic_data = [verify_ghz_bosonic(n) for n in VERIFY_CFG['N_LIST']]
     pd.DataFrame(bosonic_data)
     return (bosonic_data,)
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    Now we combine these results with our results from the simulated monolithic circuits into a single `DataFrame` for analysis.
+    """)
+    return
 
 
 @app.cell
