@@ -13,6 +13,7 @@ dependencies = [
     "qiskit-aer",
     "qiskit-ibm-runtime",
     "bosonic-sdk[disqco,hypergraph]",
+    "rich",
 ]
 
 [[tool.uv.index]]
