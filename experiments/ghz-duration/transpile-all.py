@@ -37,6 +37,7 @@ from time import monotonic as _now
 
 import numpy as np
 import qiskit
+import qiskit.qasm2 as qasm2
 import qiskit_ibm_runtime
 from rich.console import Console
 from rich.progress import (
@@ -182,15 +183,59 @@ def _transpile_one(
         logical_circuit,
         backend=backend,
         optimization_level=optimization_level,
-        seed_transpiler=rng.integers(0, 2**31),
+        seed_transpiler=int(rng.integers(0, 2**31)),
     )
 
-    qasm_str     = transpiled.qasm()
+    qasm_str     = qasm2.dumps(transpiled)
     circuit_hash = _hash_qasm(qasm_str)
     depth        = transpiled.depth()
     duration_ns  = transpiled.estimate_duration(target=backend.target)
 
     return qasm_str, circuit_hash, depth, duration_ns
+
+
+# ---------------------------------------------------------------------------
+# Per-trial worker (module-level so it can be pickled)
+#
+# All state that was previously captured by a local closure is explicitly
+# passed in via the task dict so that ProcessPoolExecutor can serialise it.
+# ---------------------------------------------------------------------------
+
+def _trial_worker(task: dict) -> dict:
+    """
+    Worker function passed to ProcessPoolExecutor.
+
+    Parameters
+    ----------
+    task : dict
+        n, seed, optimization_level  — as per transpile_batch_for_n
+        lockpath, subdir             — Paths to the lock file and subdirectory.
+        n_qubits                     — The qubit count (n), included in the result.
+
+    Returns
+    -------
+    dict with n, hash, depth, duration_ns.
+    """
+    n              = task["n_qubits"]
+    subdir         = Path(task["subdir"])
+    lockpath       = Path(task["lockpath"])
+
+    qasm_str, circuit_hash, depth, duration_ns = _transpile_one(
+        n=task["n"],
+        seed=task["seed"],
+        optimization_level=task["optimization_level"],
+    )
+
+    # ── critical section: update counter & write QASM ──────────────────────
+    with open(lockpath, "r+") as lf:
+        fcntl.flock(lf.fileno(), fcntl.LOCK_EX)
+        try:
+            write_qasm(subdir, circuit_hash, qasm_str)
+        finally:
+            fcntl.flock(lf.fileno(), fcntl.LOCK_UN)
+    # ── end critical section ───────────────────────────────────────────────
+
+    return dict(n=n, hash=circuit_hash, depth=depth, duration_ns=duration_ns)
 
 
 # ---------------------------------------------------------------------------
@@ -222,57 +267,42 @@ def transpile_batch_for_n(
     t0 = _now()
 
     rng_global = np.random.default_rng(seed_base + n)
-    tasks = [
-        dict(n=n, seed=rng_global.integers(0, 2**31), optimization_level=optimization_level)
-        for _ in range(m)
-    ]
-
-    subdir   = dataset_dir / f"n_{n:03d}"
-    lockpath = subdir / "_counter.lock"
+    subdir     = dataset_dir / f"n_{n:03d}"
+    lockpath   = subdir / "_counter.lock"
     subdir.mkdir(parents=True, exist_ok=True)
     lockpath.touch()
 
-    results: list[dict] = []
-    seen:    set[str]   = set()
-    append_lock = threading.Lock()
-
-    # ── worker function ────────────────────────────────────────────────────
-
-    def _worker(task: dict) -> dict:
-        qasm_str, circuit_hash, depth, duration_ns = _transpile_one(
-            n=task["n"],
-            seed=task["seed"],
-            optimization_level=task["optimization_level"],
+    # Build task list — every captured variable is explicit so it can be pickled.
+    # Build task list — every captured variable is explicit so it can be pickled.
+    # Note: int() is required because rng.integers returns numpy.int64, which
+    # qiskit's seed_transpiler parameter rejects ("Expected non-negative integer").
+    tasks = [
+        dict(
+            n                  = n,
+            n_qubits           = n,
+            seed               = int(rng_global.integers(0, 2**31)),
+            optimization_level = optimization_level,
+            subdir             = str(subdir),
+            lockpath           = str(lockpath),
         )
-
-        # Critical section — scan counter, write file.
-        with open(lockpath, "r+") as lf:
-            fcntl.flock(lf.fileno(), fcntl.LOCK_EX)
-            try:
-                write_qasm(subdir, circuit_hash, qasm_str)
-            finally:
-                fcntl.flock(lf.fileno(), fcntl.LOCK_UN)
-
-        rec = dict(n=n, hash=circuit_hash, depth=depth, duration_ns=duration_ns)
-        with append_lock:
-            results.append(rec)
-            seen.add(circuit_hash)
-        return rec
-
-    # ── run ─────────────────────────────────────────────────────────────────
+        for _ in range(m)
+    ]
 
     actual_workers = min(n_workers or os.cpu_count() or 4, m)
     with ProcessPoolExecutor(max_workers=actual_workers) as executor:
-        # chunksize=1 so the Progress bar advances smoothly rather than
-        # jumping in large increments.
-        list(executor.map(_worker, tasks, chunksize=max(1, m // actual_workers)))
+        records = list(executor.map(
+            _trial_worker,
+            tasks,
+            chunksize=max(1, m // actual_workers),
+        ))
 
+    seen = {r["hash"] for r in records}
     stats = dict(
-        n_written  = len(results),
-        n_unique   = len(seen),
-        elapsed_s  = _now() - t0,
+        n_written = len(records),
+        n_unique  = len(seen),
+        elapsed_s = _now() - t0,
     )
-    return results, stats
+    return records, stats
 
 
 # ---------------------------------------------------------------------------
@@ -286,7 +316,7 @@ def generate_dataset(
     optimization_level: int = 3,
     dataset_dir: Path | str = DATASET_DIR,
     n_workers: int | None = None,
-    progress = None,   # optional rich.Progress instance; created if None
+    progress=None,
 ) -> list[dict]:
     """
     Generate the full transpiled-circuit dataset.
@@ -316,12 +346,12 @@ def generate_dataset(
 
     all_records: list[dict] = []
     total_n     = len(n_list)
-    seen_global: dict[str, int] = {}   # hash → first n it appeared at
+    seen_global: dict[str, int] = {}
 
     own_progress = progress is None
     if own_progress:
-        console    = Console()
-        progress   = Progress(
+        console  = Console()
+        progress = Progress(
             SpinnerColumn(),
             TextColumn("[bold blue]{task.description}"),
             BarColumn(bar_width=32),
@@ -341,16 +371,12 @@ def generate_dataset(
         on_exit = lambda: None
 
     try:
-        n_task: TaskID = progress.add_task(
-            "transpiling",
-            total=total_n,
-            n_val=f"??",
-        )
+        n_task: TaskID = progress.add_task("transpiling", total=total_n, n_val="??")
 
         for idx, n in enumerate(n_list, start=1):
             progress.update(n_task, description=f"n={n:03d}", n_val=str(n))
 
-            records, stats = transpile_batch_for_n(
+            records, _stats = transpile_batch_for_n(
                 n=n,
                 m=m,
                 seed_base=seed,
@@ -358,19 +384,13 @@ def generate_dataset(
                 dataset_dir=dataset_dir,
                 n_workers=n_workers,
             )
-
             all_records.extend(records)
 
-            # update global seen dict for unique-hash count
             for h in (r["hash"] for r in records):
                 if h not in seen_global:
                     seen_global[h] = n
 
-            progress.update(
-                n_task,
-                completed=idx,
-                n_val=str(n),
-            )
+            progress.update(n_task, completed=idx, n_val=str(n))
 
     finally:
         on_exit()
@@ -463,21 +483,21 @@ def _expand_n_list(s: str) -> list[int]:
 # ---------------------------------------------------------------------------
 
 def main() -> int:
-    args     = _parse_args()
-    n_list   = _expand_n_list(args.n_list)
-    dataset  = Path(args.dataset_dir) if args.dataset_dir else DATASET_DIR
-    workers  = args.n_workers or os.cpu_count() or 4
+    args    = _parse_args()
+    n_list  = _expand_n_list(args.n_list)
+    dataset = Path(args.dataset_dir) if args.dataset_dir else DATASET_DIR
+    workers = args.n_workers or os.cpu_count() or 4
 
     console = Console()
     console.print()
     console.rule("[bold]transpile-all")
     console.print(
-        f"  [cyan]n[/cyan]    : {n_list[0]}–{n_list[-1]}  ({len(n_list)} values)\n"
-        f"  [cyan]m[/cyan]    : {args.m}\n"
-        f"  [cyan]seed[/cyan] : {args.seed}\n"
+        f"  [cyan]n[/cyan]      : {n_list[0]}–{n_list[-1]}  ({len(n_list)} values)\n"
+        f"  [cyan]m[/cyan]      : {args.m}\n"
+        f"  [cyan]seed[/cyan]  : {args.seed}\n"
         f"  [cyan]opt[/cyan]   : {args.optimization_level}\n"
         f"  [cyan]workers[/cyan]: {workers}  [dim](per n batch)[/dim]\n"
-        f"  [cyan]dataset[/cyan]: [link]{dataset}][/link]"
+        f"  [cyan]dataset[/cyan]: {dataset}"
     )
     console.print()
 
@@ -491,7 +511,7 @@ def main() -> int:
                 optimization_level=args.optimization_level,
                 dataset_dir=dataset,
                 n_workers=workers,
-                progress=None,  # suppress all progress UI
+                progress=None,
             )
         else:
             records = generate_dataset(
@@ -503,25 +523,22 @@ def main() -> int:
                 n_workers=workers,
             )
     except Exception as exc:
-        console.print(f"[red]\n[ERROR][/red] {exc}", err=True)
+        console.print(f"[red]\n[ERROR][/red] {exc}")
         return 2
 
     # ── final summary ───────────────────────────────────────────────────────
 
-    n_total  = sum(
-        1 for _ in dataset.rglob("*.qasm")
-        if _.name != "_counter.lock"
-    )
+    n_total  = sum(1 for _ in dataset.rglob("*.qasm") if _.name != "_counter.lock")
     n_unique = len({r["hash"] for r in records})
 
     console.print()
     table = Table(show_header=True, header_style="bold", box=None)
-    table.add_column("metric",    style="dim")
-    table.add_column("value",     justify="right")
+    table.add_column("metric",  style="dim")
+    table.add_column("value",   justify="right")
     table.add_row("records generated", str(len(records)))
     table.add_row("files on disk",     str(n_total))
     table.add_row("unique hashes",     str(n_unique))
-    table.add_row("collision rate",   f"{1 - n_unique/len(records):.2%}" if records else "—")
+    table.add_row("collision rate", f"{1 - n_unique/len(records):.2%}" if records else "—")
     console.print(table)
 
     return 0
