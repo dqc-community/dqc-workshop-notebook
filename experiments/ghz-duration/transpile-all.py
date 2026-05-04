@@ -154,7 +154,7 @@ def _transpile_one(
     -------
     qasm_str     : OpenQASM 2.0 string of the transpiled circuit.
     """
-    backend = qiskit_ibm_runtime.fake_provider.FakeSherbooke()
+    backend = qiskit_ibm_runtime.fake_provider.FakeSherbrooke()
     rng = np.random.default_rng(seed)
     transpiled = qiskit.transpile(
         ghz_circuit(n, measure=True),
