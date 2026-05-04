@@ -138,7 +138,7 @@ def _transpile_one(
     n: int,
     seed: int,
     optimization_level: int,
-) -> tuple[str, str, int, float]:
+) -> str:
     """
     Transpile one GHZ circuit for FakeSherbrooke and return metadata.
 
@@ -153,7 +153,6 @@ def _transpile_one(
     Returns
     -------
     qasm_str     : OpenQASM 2.0 string of the transpiled circuit.
-    circuit_hash : SHA-256 prefix of qasm_str.
     """
     backend = qiskit_ibm_runtime.fake_provider.FakeSherbooke()
     rng = np.random.default_rng(seed)
@@ -281,8 +280,8 @@ def transpile_batch_for_n(
 
     rng_global = np.random.default_rng(seed_base + n)
     subdir     = dataset_dir / f"n_{n:03d}"
-    lockpath   = subdir / "_counter.lock"
     subdir.mkdir(parents=True, exist_ok=True)
+    lockpath   = subdir / "_counter.lock"
     lockpath.touch()
 
     # Build task list — every captured variable is explicit so it can be pickled.
@@ -307,7 +306,7 @@ def transpile_batch_for_n(
             chunksize=max(1, m // actual_workers),
         ))
 
-    seen = {r["hash"] for r in records}
+    lockpath.unlink() # remove lockfile now that work is done
     stats = dict(
         n_written = len(records),
         n_unique  = len({r["hash"] for r in records}),
