@@ -61,45 +61,12 @@ _SCRIPT_DIR = Path(__file__).parent.resolve()
 DATASET_DIR = _SCRIPT_DIR / "transpiled-circuits"
 
 
-# ===========================================================================
-# PARALLELISM NOTES (M-series Mac)
-# ===========================================================================
-#
-# Qiskit transpilation is CPU-bound → ProcessPoolExecutor is the right tool.
-#
-# Parallelism is applied WITHIN each n value only:
-#
-#   The m transpilation calls for a fixed n are independent and CPU-bound.
-#   ProcessPoolExecutor farms them across available cores.
-#
-#   All workers share one subdirectory, so the hash-lookup + write step
-#   is protected by a file lock (fcntl.flock on _counter.lock) to ensure
-#   counter values are unique and files are not corrupted.
-#
-# Cross-n parallelism is intentionally omitted:
-#   Each n writes to a separate subdirectory, so there is no contention,
-#   but parallelising across n adds unnecessary process-spawn overhead and
-#   complexity for what is already a fast outer loop.  The per-n
-#   transpilation dominates runtime, so parallelism within n is where it
-#   matters.
-#
-# What NOT to parallelise:
-#   • QASM hashing — microsecond-level, not worth the IPC overhead.
-#   • Counter scan & write — already inside the fcntl.flock critical section.
-#
-# Recommended n_workers on M-series:
-#   cpu_count=10 (M3 Pro): 8
-#   cpu_count=12 (M3 Max): 10
-#
-# ===========================================================================
-
-
 # ---------------------------------------------------------------------------
 # GHZ circuit factory
 # ---------------------------------------------------------------------------
 
-def ghz_circuit(n: int, measure: bool = False) -> qiskit.QuantumCircuit:
-    """Create a GHZ state circuit on n qubits (unmeasured by default)."""
+def ghz_circuit(n: int, measure: bool = True) -> qiskit.QuantumCircuit:
+    """Create a GHZ state circuit on n qubits (measured by default)."""
     qc = qiskit.QuantumCircuit(n, n)
     qc.h(0)
     for i in range(1, n):
@@ -137,23 +104,34 @@ def _next_counter(subdir: Path, h: str) -> int:
     return max(counters) + 1 if counters else 1
 
 
-def write_qasm(subdir: Path, h: str, qasm_str: str) -> Path:
+def write_qasm(subdir: Path, qasm_str: str) -> Path | None:
     """
     Write a QASM string to the dataset directory.
 
     Naming convention: ``HASH-xxxx.qasm`` where xxxx is a zero-padded
-    4-digit counter.  Scans existing files with the same hash prefix and
-    increments the counter to produce the next unused filename.
+    4-digit counter tracking how many times this hash has been observed.
+
+    Exactly one file per unique hash is written to disk: the first
+    transpilation to produce a hash writes ``HASH-0001.qasm``; all
+    subsequent transpilations with the same hash are counted by incrementing
+    the counter but no new file is written.
     """
+    h = _hash_qasm(qasm_str)
     counter  = _next_counter(subdir, h)
     filename = f"{h}-{counter:04d}.qasm"
-    out_path = subdir / filename
-    out_path.write_text(qasm_str)
-    return out_path
+    if counter == 1:
+        # First time this hash has been seen — write the file.
+        (subdir / filename).write_text(qasm_str)
+    else:
+        # Subsequent occurrences: increment the counter (tracked via the
+        # filename pattern) but do NOT write another QASM file.
+        oldname = f"{h}-{counter-1:04d}.qasm"
+        os.rename(subdir / oldname, subdir / filename)
+    return None
 
 
 # ---------------------------------------------------------------------------
-# Transpilation worker (top-level function for ProcessPoolExecutor pickling)
+# Transpilation worker (module-level so ProcessPoolExecutor can pickle it)
 # ---------------------------------------------------------------------------
 
 def _transpile_one(
@@ -164,34 +142,69 @@ def _transpile_one(
     """
     Transpile one GHZ circuit for FakeSherbrooke and return metadata.
 
-    The backend is imported here so that the (relatively large) FakeSherbrooke
-    object is not pickled and sent to every worker process — each worker
-    constructs its own instance instead.
+    The backend is constructed here (not passed as an argument) so that it
+    is not pickled and sent to every worker process — each worker builds its
+    own instance.
+
+    The seed is converted to a Python int here because
+    np.random.default_rng(seed).integers() returns numpy.int64, which Qiskit
+    validates as not a native int ("Expected non-negative integer").
 
     Returns
     -------
     qasm_str     : OpenQASM 2.0 string of the transpiled circuit.
     circuit_hash : SHA-256 prefix of qasm_str.
-    depth        : Circuit depth after transpilation.
-    duration_ns  : Estimated circuit duration in nanoseconds.
     """
-    backend = qiskit_ibm_runtime.fake_provider.FakeSherbrooke()
-
-    rng             = np.random.default_rng(seed)
-    logical_circuit = ghz_circuit(n, measure=False)
-    transpiled      = qiskit.transpile(
-        logical_circuit,
+    backend = qiskit_ibm_runtime.fake_provider.FakeSherbooke()
+    rng = np.random.default_rng(seed)
+    transpiled = qiskit.transpile(
+        ghz_circuit(n, measure=True),
         backend=backend,
         optimization_level=optimization_level,
         seed_transpiler=int(rng.integers(0, 2**31)),
     )
 
-    qasm_str     = qasm2.dumps(transpiled)
-    circuit_hash = _hash_qasm(qasm_str)
-    depth        = transpiled.depth()
-    duration_ns  = transpiled.estimate_duration(target=backend.target)
+    # Qiskit 2.x removed QuantumCircuit.qasm(); use qiskit.qasm2.dumps() instead.
+    return qiskit.qasm2.dumps(transpiled)
 
-    return qasm_str, circuit_hash, depth, duration_ns
+# ---------------------------------------------------------------------------
+# Per-trial worker (module-level for pickling)
+#
+# All state that was previously captured by a local closure is explicitly
+# passed in via the task dict so that ProcessPoolExecutor can serialise it.
+# ---------------------------------------------------------------------------
+
+def _trial_worker(task: dict) -> dict:
+    """
+    Worker function passed to ProcessPoolExecutor.
+
+    Parameters
+    ----------
+    task : dict
+        n, seed, optimization_level  — circuit/transpiler parameters
+        subdir, lockpath            — string paths to the output directory and lock file
+        n_qubits                   — qubit count, included in the result dict
+
+    Returns
+    -------
+    dict with n, hash, depth, duration_ns.
+    """
+    qasm_str = _transpile_one(
+        n=task["n"],
+        seed=task["seed"],
+        optimization_level=task["optimization_level"],
+    )
+
+    # ── critical section: update counter & write QASM ──────────────────────
+    with open(Path(task["lockpath"]), "r+") as lf:
+        fcntl.flock(lf.fileno(), fcntl.LOCK_EX)
+        try:
+            write_qasm(Path(task["subdir"]), qasm_str)
+        finally:
+            fcntl.flock(lf.fileno(), fcntl.LOCK_UN)
+    # ── end critical section ───────────────────────────────────────────────
+
+    return dict(n=task["n"], hash=_hash_qasm(qasm_str))
 
 
 # ---------------------------------------------------------------------------
@@ -273,13 +286,11 @@ def transpile_batch_for_n(
     lockpath.touch()
 
     # Build task list — every captured variable is explicit so it can be pickled.
-    # Build task list — every captured variable is explicit so it can be pickled.
     # Note: int() is required because rng.integers returns numpy.int64, which
     # qiskit's seed_transpiler parameter rejects ("Expected non-negative integer").
     tasks = [
         dict(
             n                  = n,
-            n_qubits           = n,
             seed               = int(rng_global.integers(0, 2**31)),
             optimization_level = optimization_level,
             subdir             = str(subdir),
@@ -299,7 +310,7 @@ def transpile_batch_for_n(
     seen = {r["hash"] for r in records}
     stats = dict(
         n_written = len(records),
-        n_unique  = len(seen),
+        n_unique  = len({r["hash"] for r in records}),
         elapsed_s = _now() - t0,
     )
     return records, stats
@@ -346,10 +357,8 @@ def generate_dataset(
 
     all_records: list[dict] = []
     total_n     = len(n_list)
-    seen_global: dict[str, int] = {}
 
-    own_progress = progress is None
-    if own_progress:
+    if progress is None:
         console  = Console()
         progress = Progress(
             SpinnerColumn(),
@@ -385,10 +394,6 @@ def generate_dataset(
                 n_workers=n_workers,
             )
             all_records.extend(records)
-
-            for h in (r["hash"] for r in records):
-                if h not in seen_global:
-                    seen_global[h] = n
 
             progress.update(n_task, completed=idx, n_val=str(n))
 
@@ -503,7 +508,6 @@ def main() -> int:
 
     try:
         if args.quiet:
-            # Minimal output: just the final summary line.
             records = generate_dataset(
                 n_list=n_list,
                 m=args.m,
