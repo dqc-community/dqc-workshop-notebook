@@ -206,54 +206,6 @@ def _trial_worker(task: dict) -> dict:
     return dict(n=task["n"], hash=_hash_qasm(qasm_str))
 
 
-# ---------------------------------------------------------------------------
-# Per-trial worker (module-level so it can be pickled)
-#
-# All state that was previously captured by a local closure is explicitly
-# passed in via the task dict so that ProcessPoolExecutor can serialise it.
-# ---------------------------------------------------------------------------
-
-def _trial_worker(task: dict) -> dict:
-    """
-    Worker function passed to ProcessPoolExecutor.
-
-    Parameters
-    ----------
-    task : dict
-        n, seed, optimization_level  — as per transpile_batch_for_n
-        lockpath, subdir             — Paths to the lock file and subdirectory.
-        n_qubits                     — The qubit count (n), included in the result.
-
-    Returns
-    -------
-    dict with n, hash, depth, duration_ns.
-    """
-    n              = task["n_qubits"]
-    subdir         = Path(task["subdir"])
-    lockpath       = Path(task["lockpath"])
-
-    qasm_str, circuit_hash, depth, duration_ns = _transpile_one(
-        n=task["n"],
-        seed=task["seed"],
-        optimization_level=task["optimization_level"],
-    )
-
-    # ── critical section: update counter & write QASM ──────────────────────
-    with open(lockpath, "r+") as lf:
-        fcntl.flock(lf.fileno(), fcntl.LOCK_EX)
-        try:
-            write_qasm(subdir, circuit_hash, qasm_str)
-        finally:
-            fcntl.flock(lf.fileno(), fcntl.LOCK_UN)
-    # ── end critical section ───────────────────────────────────────────────
-
-    return dict(n=n, hash=circuit_hash, depth=depth, duration_ns=duration_ns)
-
-
-# ---------------------------------------------------------------------------
-# Batch transpilation (parallel over m only)
-# ---------------------------------------------------------------------------
-
 def transpile_batch_for_n(
     n: int,
     m: int,
