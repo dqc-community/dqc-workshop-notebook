@@ -456,11 +456,6 @@ def _parse_args() -> argparse.Namespace:
         metavar="DIR",
         help=f"Override dataset directory (default: {DATASET_DIR}).",
     )
-    parser.add_argument(
-        "--quiet", "-q",
-        action="store_true",
-        help="Suppress all output except the final summary line.",
-    )
     return parser.parse_args()
 
 
@@ -507,25 +502,14 @@ def main() -> int:
     console.print()
 
     try:
-        if args.quiet:
-            records = generate_dataset(
-                n_list=n_list,
-                m=args.m,
-                seed=args.seed,
-                optimization_level=args.optimization_level,
-                dataset_dir=dataset,
-                n_workers=workers,
-                progress=None,
-            )
-        else:
-            records = generate_dataset(
-                n_list=n_list,
-                m=args.m,
-                seed=args.seed,
-                optimization_level=args.optimization_level,
-                dataset_dir=dataset,
-                n_workers=workers,
-            )
+        records = generate_dataset(
+            n_list=n_list,
+            m=args.m,
+            seed=args.seed,
+            optimization_level=args.optimization_level,
+            dataset_dir=dataset,
+            n_workers=workers,
+        )
     except Exception as exc:
         console.print(f"[red]\n[ERROR][/red] {exc}")
         return 2
