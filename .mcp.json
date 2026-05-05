@@ -3,6 +3,26 @@
     "marimo": {
       "url": "http://localhost:2718/mcp/server",
       "lifecycle": "lazy"
+    },
+    "qiskit": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--group",
+        "dev",
+        "qiskit-mcp-server"
+      ],
+      "directTools": true
+    },
+    "qiskit-docs": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--group",
+        "dev",
+        "qiskit-docs-mcp-server"
+      ],
+      "directTools": true
     }
   }
 }
