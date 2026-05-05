@@ -33,7 +33,10 @@ bosonic-sdk = { index = "test-pypi" }
 index-strategy = "unsafe-best-match"
 
 [dependency-groups]
-dev = []
+dev = [
+    "qiskit-docs-mcp-server>=0.2.0",
+    "qiskit-mcp-server>=0.3.0",
+]
 
 [tool.marimo]
 tags = ["workshop", "quantum-computing"]
