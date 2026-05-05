@@ -27,6 +27,12 @@ def load_qasm(filepath):
     return circuit
 
 
+def circuit_count(filepath):
+    m = re.search(r"-(\d{4})\.qasm$", filepath.name)
+    if m:
+        return int(m.group(1))
+
+
 def instruction_fidelity(instruction, circuit, backend):
     name = instruction.operation.name
     if name == 'reset':
@@ -126,9 +132,15 @@ def init_worker():
 
 
 def process_file(filepath):
+    data = {
+        'filename': filepath.name,
+        'count': circuit_count(filepath)
+    }
     circuit = load_qasm(filepath)
     qindex = {q: i for i, q in enumerate(circuit.qubits)}
-    return circuit_metrics_fast(circuit, qindex, _ERROR_TABLE, backend=_BACKEND)
+    metrics = circuit_metrics_fast(circuit, qindex, _ERROR_TABLE, backend=_BACKEND)
+    data.update(metrics)
+    return data
 
 
 def main():
