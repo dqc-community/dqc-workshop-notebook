@@ -66,26 +66,27 @@ def circuit_metrics(circuit: qiskit.QuantumCircuit, backend=_BACKEND):
 def build_gate_error_table(backend):
     target = backend.target
     table = {}  # (name, qubit_tuple) -> error
+    max_error = 0.8
 
     for op, qtuple in target.instructions:
-        if qtuple is not None:
+        if qtuple is not None and op.name not in ['delay', 'reset']:
             props = target[op.name].get(qtuple)
             err = getattr(props, "error", None)
             if err is None:
                 continue
             table[(op.name, qtuple)] = err
             
-    while np.max(table.values() == 1.0):
+    while max(table.values()) >= max_error:
         # find a gate with an error rate of 1
-        bad_gate = next(gate for gate, err in table.items() if err == 1.0)
+        bad_gate = max(table, key=table.get)
         
         # get the average of all errors for that gate < 1
         avg_log_err = np.mean(
-            np.log(err) for gate, err in table.items() if gate[0] == bad_gate[0]
+            list(np.log(err) for gate, err in table.items() if gate[0] == bad_gate[0] and err < max_error)
         )
         
         # replace all bad values with the fixed value
-        for gate in [gate for gate, err in table.items() if err == 1.0]:
+        for gate in [gate for gate, err in table.items() if err >= max_error]:
             table[gate] = np.exp(avg_log_err)
         
         # repeat until there are no more bad gates
@@ -99,9 +100,11 @@ def instruction_fidelity_fast(inst, qindex, error_table):
     return 1.0 - error_table.get((name, qtuple), 0.0)
 
 
-def log_circuit_fidelity_fast(circuit, qindex, error_table):
+def log_circuit_fidelity_fast(circuit, qindex, error_table, measure=False):
     return sum(
-        np.log(instruction_fidelity_fast(inst, qindex, error_table)) for inst in circuit
+        np.log(instruction_fidelity_fast(inst, qindex, error_table))
+        for inst in circuit
+        if inst.operation.name != 'measure' or measure
     )
 
 
@@ -120,6 +123,7 @@ def circuit_metrics_fast(
         'duration_s': circuit.estimate_duration(target=backend.target, unit='s'),
         'duration_dt': circuit.estimate_duration(target=backend.target, unit='dt'),
         'log_fidelity': log_circuit_fidelity_fast(circuit, qindex, error_table),
+        'log_fidelity_measure': log_circuit_fidelity_fast(circuit, qindex, error_table, measure=True),
     }
     metrics.update(circuit.count_ops())
     return metrics
