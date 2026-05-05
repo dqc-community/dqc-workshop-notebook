@@ -68,6 +68,21 @@ def build_gate_error_table(backend):
             if err is None:
                 continue
             table[(op.name, qtuple)] = err
+            
+    while np.maximum(table.values() == 1.0):
+        # find a gate with an error rate of 1
+        bad_gate = next(gate for gate, err in table.items() if err == 1.0)
+        
+        # get the average of all errors for that gate < 1
+        avg_log_err = np.mean(
+            np.log(err) for gate, err in table.items() if gate[0] == bad_gate[0]
+        )
+        
+        # replace all bad values with the fixed value
+        for gate in [gate for gate, err in table.items() if err == 1.0]:
+            table[gate] = np.exp(avg_log_err)
+        
+        # repeat until there are no more bad gates
 
     return table
 
