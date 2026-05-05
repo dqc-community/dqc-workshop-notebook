@@ -75,7 +75,7 @@ def build_gate_error_table(backend):
                 continue
             table[(op.name, qtuple)] = err
             
-    while np.maximum(table.values() == 1.0):
+    while np.max(table.values() == 1.0):
         # find a gate with an error rate of 1
         bad_gate = next(gate for gate, err in table.items() if err == 1.0)
         
