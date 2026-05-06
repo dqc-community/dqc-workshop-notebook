@@ -1245,7 +1245,7 @@ def _(device_df, scaling_df):
     tts_df = scaling_df.join(
         scaling_df.merge(device_df, on='backend').apply(tts_data_series, axis=1)
     )
-    tts_df.loc[:, tts_df.columns != 'circuit']
+    tts_df.info()
     return (tts_df,)
 
 
@@ -1353,14 +1353,6 @@ def _(df_linear_fit):
     )
     fits
     return (fits,)
-
-
-@app.cell(hide_code=True)
-def _():
-    mo.md(r"""
- 
-    """)
-    return
 
 
 @app.cell(hide_code=True)
@@ -1513,7 +1505,7 @@ def _():
     mo.md(r"""
     ## Relaxing Assumptions
 
-    We assumed that gates are executed sequentially, but in many architectures multiple gates on different qubits can happen simultaneously. For the fake IBM backend, we can actually use Qiskit it to inspect the gate timing of a transpiled circuit:
+    We assumed that gates are executed sequentially, but in many architectures multiple gates on different qubits can happen simultaneously. For the fake IBM backend, we can actually use Qiskit to inspect the gate timing of a transpiled circuit:
     """)
     return
 
@@ -1547,6 +1539,63 @@ def _(FAKE_IBM_BACKEND):
 
     _circuit = ghz_circuit(7)
     plt.hist(pd.DataFrame({'duration': [_duration(_circuit) for _ in range(100)]}))
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    ## Testing the Model
+
+    We can compare the simple model of execution time to the built-in `estimate_duration` method (which includes the parallel gate execution we saw in the previous section).
+    """)
+    return
+
+
+@app.cell
+def _(FAKE_IBM_BACKEND, device_df, tts_df):
+    tts_comp_df = tts_df.loc[tts_df['backend'] == 'IBM', ['n', 't_shot', 'circuit']]
+
+    # use `estimate_duration` to get the predicted execution time of each circuit
+    tts_comp_df['t_shot_backend'] = tts_comp_df['circuit'].apply(
+        lambda qc: qc.estimate_duration(target=FAKE_IBM_BACKEND.target)
+    )
+
+    # remove device overhead (not measured in estimate_duration)
+    _overhead = device_df[device_df['backend'] == 'IBM'].iloc[0]['t_overhead']
+    tts_comp_df['t_shot'] = tts_comp_df['t_shot'] - _overhead
+
+    # compute ratio between our predicted time and the built-in prediction
+    tts_comp_df['ratio'] = tts_comp_df['t_shot'] / tts_comp_df['t_shot_backend']
+
+    tts_comp_df[['n', 'ratio', 't_shot', 't_shot_backend']]
+
+    return (tts_comp_df,)
+
+
+@app.cell
+def _(tts_comp_df):
+    def backend_check(df):
+        plt.plot(df["n"], df["t_shot"], label="our model")
+        plt.plot(df["n"], df["t_shot_backend"], label="estimate_duration")
+
+        plt.xlabel("Number of Qubits")
+        plt.ylabel("Seconds per shot")
+        plt.title("Estimated Circuit Duration")
+        plt.legend()
+
+        plt.tight_layout()
+        return plt
+
+    backend_check(tts_comp_df).show()
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    Our simple model (where we assume each gate is executed sequentially) is slower than the backend's built-in estimate, but the important feature (which drove our qualitative results) is that shot time is approximately linear in the number of qubits. The ratio by which we overstimate execution time is remarkably stable at around 2.3.
+    """)
     return
 
 
