@@ -20,3 +20,4 @@ experiments/ghz-duration/transpiled-circuits/
 **/*.feather
 **/*.arrow
 **/*.gz
+**/*.zip
