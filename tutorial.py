@@ -824,7 +824,7 @@ def _():
 @app.function
 def qiskit_metrics(circuit):
     count_ops = lambda x: sum(inst.operation.name == x for inst in circuit.data)
-    gate_ops = [inst for inst in circuit.data if inst.operation.name not in ['measure', 'reset', 'barrier']]
+    gate_ops = [inst for inst in circuit.data if inst.operation.name not in ['measure', 'reset', 'barrier', 'rz']]
     data = {
         'measure_count': count_ops('measure'),
         'reset_count': count_ops('reset'),
@@ -1088,9 +1088,9 @@ def _(FAKE_IBM_BACKEND):
                 'duration': props.duration,
                 'error': props.error,
             })
-    
+
         return data
-    
+
 
     op_df = pd.DataFrame(
         [instruction_data(inst) for inst in FAKE_IBM_BACKEND.target.instructions]
