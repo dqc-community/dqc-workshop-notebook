@@ -157,8 +157,14 @@ def main():
             total=len(qasm_files),
             desc="Processing circuits",
         ))
-
-    pd.DataFrame(data).to_csv(SCRIPT_DIR / "data.csv", index=False)
+        
+    df = pd.DataFrame(data)
+    print(df.info())
+    outpath = SCRIPT_DIR / "data.feather"
+    print("Writing to disk...")
+    df.to_feather(outpath)
+    print("Done!")
+    print(outpath.stats().st_size, " bytes written to disk")
     
     return None
     
