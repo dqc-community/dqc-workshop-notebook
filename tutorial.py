@@ -31,7 +31,7 @@
 
 import marimo
 
-__generated_with = "0.23.4"
+__generated_with = "0.23.5"
 app = marimo.App(width="full")
 
 with app.setup(hide_code=True):
@@ -1044,12 +1044,12 @@ def _():
         [
             {
                 "backend": "IBM",
-                "t1q": 2e-8,
-                "t2q": 2e-7,
-                "t_meas": 1e-6,
+                "t1q": 5.7e-8,
+                "t2q": 5.4e-7,
+                "t_meas": 1.2e-6,
                 "t_overhead": 2e-4,
-                "e1q": 5e-4,
-                "e2q": 3e-3,
+                "e1q": 5.6e-4,
+                "e2q": 1.0e-2,
             },
             {
                 "backend": "Bosonic",
@@ -1069,6 +1069,55 @@ def _():
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
+    We can compare the values we set for the IBM backend to the values recorded in the backend itself (expand the code if you want to see how this is done):
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(FAKE_IBM_BACKEND):
+    def instruction_data(inst, backend=FAKE_IBM_BACKEND):
+        op, qtuple = inst
+        data = {
+            'name': op.name,
+            'qubits': qtuple,
+        }
+        props = backend.target[op.name].get(qtuple) if qtuple else None
+        if props:
+            data.update({
+                'duration': props.duration,
+                'error': props.error,
+            })
+    
+        return data
+    
+
+    op_df = pd.DataFrame(
+        [instruction_data(inst) for inst in FAKE_IBM_BACKEND.target.instructions]
+    )
+
+    op_df[
+        op_df['error'] < 1 # ignore ecr gates with error = 1
+    ].melt(
+        id_vars=['name'],
+        value_vars=['duration','error'],
+        var_name='variable',
+        value_name='value',
+    ).groupby(
+        ['name', 'variable']
+    ).agg(
+        mean=('value', 'mean'),
+    ).reset_index().pivot_table(
+        index='name',
+        columns='variable',
+        values='mean',
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
     We can merge this device data directly into our experiment data to compute execution times at each row.
     """)
     return
@@ -1077,7 +1126,7 @@ def _():
 @app.cell
 def _(device_df, scaling_df):
     _merged = scaling_df.merge(device_df, on='backend')
-    _merged.loc[:, _merged.columns != 'circuit']
+    _merged.info()
     return
 
 
@@ -1309,7 +1358,7 @@ def _(df_linear_fit):
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
-
+ 
     """)
     return
 
