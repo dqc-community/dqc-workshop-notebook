@@ -113,6 +113,20 @@ def _():
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
+    ## Motivation
+
+    If we want to study the difference between monolithic and distributed quantum circuits, why are we using two processors with different qubit modalities? Aren't we just comparing a superconducting QPU to a trapped-ion QPU, rather than a true monolithic-distributed comparison?
+
+    The reason we do this is because we care about studying the behavior of circuits as they scale with qubit count. Larger circuits require more qubits to be entangled with each other, so **performance** will be linked to **connectivity** – how costly is it to entangle a given pair of qubits given the physical constraints of the QPU? On monolithic architectures, qubits must routed to form these connection, whether that routing is virtual (e.g., SWAP gates to exchange the quantum state of two qubits) or physical (e.g., shuttling two ions to a separate portion of the trap where an entangling gate is performed). In a distributed architecture, routing costs are determined by the cost of establishing a remote link, which does not scale with system size. But in a monolithic architecture, routing costs increase as the QPU becomes larger (longer SWAP chains, longer shuttling times) and more complex (imagine a city at rush hour vs. at midnight).
+
+    The reason we choose a superconducting QPU as our monolithic processor is because physical qubit routing is impossible, which means that all routing operations show up as gates in the quantum circuit. Physical routing operations don't show up as gates in a circuit, so we would not be able to use the transpiled quantum circuit to tell us anything about the routing complexity and its impact on circuit execution times and error rates. Because our distributed architecture records all routing operations as quantum gates appearing in the circuit, we need to choose a monolithic processor with the same restriction.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
     # GHZ Circuit Generator
 
     Now that we have installed all dependencies and given an overview of the notebook content, we can start building our test circuit. A Greenberger-Horne-Zeilinger (GHZ) state on $n$ qubits is defined as:
