@@ -9,3 +9,15 @@ __marimo__/session/
 .jupyter_cache/
 .quarto/
 _site/
+**/*.DS_Store
+
+# Transpiled circuit dataset
+experiments/ghz-duration/transpiled-circuits/
+*.qasm
+
+# General datasets
+**/*.csv
+**/*.feather
+**/*.arrow
+**/*.gz
+**/*.zip

@@ -838,7 +838,7 @@ def _():
 @app.function
 def qiskit_metrics(circuit):
     count_ops = lambda x: sum(inst.operation.name == x for inst in circuit.data)
-    gate_ops = [inst for inst in circuit.data if inst.operation.name not in ['measure', 'reset', 'barrier']]
+    gate_ops = [inst for inst in circuit.data if inst.operation.name not in ['measure', 'reset', 'barrier', 'rz']]
     data = {
         'measure_count': count_ops('measure'),
         'reset_count': count_ops('reset'),
@@ -1058,12 +1058,12 @@ def _():
         [
             {
                 "backend": "IBM",
-                "t1q": 2e-8,
-                "t2q": 2e-7,
-                "t_meas": 1e-6,
+                "t1q": 5.7e-8,
+                "t2q": 5.4e-7,
+                "t_meas": 1.2e-6,
                 "t_overhead": 2e-4,
-                "e1q": 5e-4,
-                "e2q": 3e-3,
+                "e1q": 5.6e-4,
+                "e2q": 1.0e-2,
             },
             {
                 "backend": "Bosonic",
@@ -1083,6 +1083,55 @@ def _():
 @app.cell(hide_code=True)
 def _():
     mo.md(r"""
+    We can compare the values we set for the IBM backend to the values recorded in the backend itself (expand the code if you want to see how this is done):
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(FAKE_IBM_BACKEND):
+    def instruction_data(inst, backend=FAKE_IBM_BACKEND):
+        op, qtuple = inst
+        data = {
+            'name': op.name,
+            'qubits': qtuple,
+        }
+        props = backend.target[op.name].get(qtuple) if qtuple else None
+        if props:
+            data.update({
+                'duration': props.duration,
+                'error': props.error,
+            })
+
+        return data
+
+
+    op_df = pd.DataFrame(
+        [instruction_data(inst) for inst in FAKE_IBM_BACKEND.target.instructions]
+    )
+
+    op_df[
+        op_df['error'] < 1 # ignore ecr gates with error = 1
+    ].melt(
+        id_vars=['name'],
+        value_vars=['duration','error'],
+        var_name='variable',
+        value_name='value',
+    ).groupby(
+        ['name', 'variable']
+    ).agg(
+        mean=('value', 'mean'),
+    ).reset_index().pivot_table(
+        index='name',
+        columns='variable',
+        values='mean',
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
     We can merge this device data directly into our experiment data to compute execution times at each row.
     """)
     return
@@ -1091,7 +1140,7 @@ def _():
 @app.cell
 def _(device_df, scaling_df):
     _merged = scaling_df.merge(device_df, on='backend')
-    _merged.loc[:, _merged.columns != 'circuit']
+    _merged.info()
     return
 
 
@@ -1210,7 +1259,7 @@ def _(device_df, scaling_df):
     tts_df = scaling_df.join(
         scaling_df.merge(device_df, on='backend').apply(tts_data_series, axis=1)
     )
-    tts_df.loc[:, tts_df.columns != 'circuit']
+    tts_df.info()
     return (tts_df,)
 
 
@@ -1318,14 +1367,6 @@ def _(df_linear_fit):
     )
     fits
     return (fits,)
-
-
-@app.cell(hide_code=True)
-def _():
-    mo.md(r"""
- 
-    """)
-    return
 
 
 @app.cell(hide_code=True)
@@ -1478,7 +1519,7 @@ def _():
     mo.md(r"""
     ## Relaxing Assumptions
 
-    We assumed that gates are executed sequentially, but in many architectures multiple gates on different qubits can happen simultaneously. For the fake IBM backend, we can actually use Qiskit it to inspect the gate timing of a transpiled circuit:
+    We assumed that gates are executed sequentially, but in many architectures multiple gates on different qubits can happen simultaneously. For the fake IBM backend, we can actually use Qiskit to inspect the gate timing of a transpiled circuit:
     """)
     return
 
@@ -1512,6 +1553,63 @@ def _(FAKE_IBM_BACKEND):
 
     _circuit = ghz_circuit(7)
     plt.hist(pd.DataFrame({'duration': [_duration(_circuit) for _ in range(100)]}))
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    ## Testing the Model
+
+    We can compare the simple model of execution time to the built-in `estimate_duration` method (which includes the parallel gate execution we saw in the previous section).
+    """)
+    return
+
+
+@app.cell
+def _(FAKE_IBM_BACKEND, device_df, tts_df):
+    tts_comp_df = tts_df.loc[tts_df['backend'] == 'IBM', ['n', 't_shot', 'circuit']]
+
+    # use `estimate_duration` to get the predicted execution time of each circuit
+    tts_comp_df['t_shot_backend'] = tts_comp_df['circuit'].apply(
+        lambda qc: qc.estimate_duration(target=FAKE_IBM_BACKEND.target)
+    )
+
+    # remove device overhead (not measured in estimate_duration)
+    _overhead = device_df[device_df['backend'] == 'IBM'].iloc[0]['t_overhead']
+    tts_comp_df['t_shot'] = tts_comp_df['t_shot'] - _overhead
+
+    # compute ratio between our predicted time and the built-in prediction
+    tts_comp_df['ratio'] = tts_comp_df['t_shot'] / tts_comp_df['t_shot_backend']
+
+    tts_comp_df[['n', 'ratio', 't_shot', 't_shot_backend']]
+
+    return (tts_comp_df,)
+
+
+@app.cell
+def _(tts_comp_df):
+    def backend_check(df):
+        plt.plot(df["n"], df["t_shot"], label="our model")
+        plt.plot(df["n"], df["t_shot_backend"], label="estimate_duration")
+
+        plt.xlabel("Number of Qubits")
+        plt.ylabel("Seconds per shot")
+        plt.title("Estimated Circuit Duration")
+        plt.legend()
+
+        plt.tight_layout()
+        return plt
+
+    backend_check(tts_comp_df).show()
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""
+    Our simple model (where we assume each gate is executed sequentially) is slower than the backend's built-in estimate, but the important feature (which drove our qualitative results) is that shot time is approximately linear in the number of qubits. The ratio by which we overstimate execution time is remarkably stable at around 2.3.
+    """)
     return
 
 

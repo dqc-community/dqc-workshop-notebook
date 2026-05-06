@@ -16,16 +16,16 @@ uvx marimo edit --sandbox https://github.com/dqc-community/dqc-workshop-notebook
 
 ## Development
 
-For development, you can sync dependencies with uv:
+For local execution, you can sync dependencies with uv:
 
 ```bash
 uv sync
 ```
 
-Optional comparison extras:
+For development (e.g., access to MCP servers):
 
 ```bash
-uv sync --extra comparison
+uv sync --extra dev
 ```
 
 ## Run
