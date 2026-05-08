@@ -1,6 +1,6 @@
 # DQC Workshop Notebook
 
-[![Open in molab](https://marimo.io/molab-shield.svg)](https://molab.marimo.io/github/dqc-community/dqc-workshop-notebook/blob/main/tutorial.py) [![Open in Visual Studio Code](https://open.vscode.dev/badges/open-in-vscode.svg)](https://open.vscode.dev/dqc-community/dqc-workshop-notebook)
+[![Open in molab](https://marimo.io/molab-shield.svg)](https://molab.marimo.io/github/dqc-community/dqc-workshop-notebook/blob/main/tutorial.py) [![Open in Visual Studio Code](https://img.shields.io/badge/Open%20in-VS%20Code-007ACC?logo=visual-studio-code&logoColor=white)](https://open.vscode.dev/dqc-community/dqc-workshop-notebook)
 
 This repository contains materials for the distributed quantum computing (DQC) tutorial workshop. Slides for the workshop are hosted separately at [this URL](https://pitch.com/v/distributed-quantum-computing-cjfvmx).
 
