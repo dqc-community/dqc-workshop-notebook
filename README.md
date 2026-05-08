@@ -10,6 +10,14 @@ Dependencies are bundled with the notebook using [Marimo's sandbox mode](https:/
 uvx marimo edit --sandbox https://github.com/dqc-community/dqc-workshop-notebook/blob/main/tutorial.py
 ```
 
+### Previous Workshops
+
+If you want to access the version of this repo that was used for a previous workshop, check out the [tag list](https://github.com/dqc-community/dqc-workshop-notebook/tags). You can view a specific workshop's notebook directly by specifying the tag in the notebook URL:
+
+```
+uvx marimo edit --sandbox https://github.com/dqc-community/dqc-workshop-notebook/blob/<tag-name>/tutorial.py
+```
+
 ## Requirements
 
 - [uv](https://docs.astral.sh/uv/#installation) (handles installing the correct version of Python and all dependencies)
