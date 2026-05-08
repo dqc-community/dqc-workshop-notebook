@@ -12,7 +12,7 @@ uvx marimo edit --sandbox https://github.com/dqc-community/dqc-workshop-notebook
 
 ## Requirements
 
-- [uv](https://github.com/astral-sh/uv) (handles installing the correct version of Python and all dependencies)
+- [uv](https://docs.astral.sh/uv/#installation) (handles installing the correct version of Python and all dependencies)
 
 ## Development
 
