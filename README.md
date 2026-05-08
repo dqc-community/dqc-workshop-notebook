@@ -10,6 +10,10 @@ Dependencies are bundled with the notebook using [Marimo's sandbox mode](https:/
 uvx marimo edit --sandbox https://github.com/dqc-community/dqc-workshop-notebook/blob/main/tutorial.py
 ```
 
+### Clone the Repository
+
+If you wamt to copy all of the code to your own computer, you can [use `git`](https://git-scm.com/install/) to clone the repo [from the terminal](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository#cloning-a-repository) or [inside VSCode](https://code.visualstudio.com/docs/sourcecontrol/quickstart#_option-a-clone-a-repository-locally).
+
 ### Previous Workshops
 
 If you want to access the version of this repo that was used for a previous workshop, check out the [tag list](https://github.com/dqc-community/dqc-workshop-notebook/tags). You can view a specific workshop's notebook directly by specifying the tag in the notebook URL:
