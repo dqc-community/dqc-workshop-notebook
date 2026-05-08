@@ -1,5 +1,7 @@
 # DQC Workshop Notebook
 
+[![Open in molab](https://marimo.io/molab-shield.svg)](https://molab.marimo.io/github/dqc-community/dqc-workshop-notebook/blob/main/tutorial.py) [![Open in Visual Studio Code](https://open.vscode.dev/badges/open-in-vscode.svg)](https://open.vscode.dev/dqc-community/dqc-workshop-notebook)
+
 This repository contains materials for the distributed quantum computing (DQC) tutorial workshop. Slides for the workshop are hosted separately at [this URL](https://pitch.com/v/distributed-quantum-computing-cjfvmx).
 
 ## Quick Start
@@ -12,7 +14,7 @@ uvx marimo edit --sandbox https://github.com/dqc-community/dqc-workshop-notebook
 
 ### Clone the Repository
 
-If you wamt to copy all of the code to your own computer, you can [use `git`](https://git-scm.com/install/) to clone the repo [from the terminal](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository#cloning-a-repository) or [inside VSCode](https://code.visualstudio.com/docs/sourcecontrol/quickstart#_option-a-clone-a-repository-locally).
+If you want to copy all of the code to your own computer, you can [use `git`](https://git-scm.com/install/) to clone the repo [from the terminal](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository#cloning-a-repository) or [inside VSCode](https://code.visualstudio.com/docs/sourcecontrol/quickstart#_option-a-clone-a-repository-locally).
 
 ### Previous Workshops
 
