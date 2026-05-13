@@ -92,9 +92,14 @@ def _(branches):
 @app.cell
 def _(QuantumCircuit, mo, np):
     post = {k: QuantumCircuit(4) for k in ['0', '1']}
+
+    post['0'].x(2)
     post['0'].cx(3, 2)
+
     post['1'].rx(np.pi, 3)
+    post['1'].x(2)
     post['1'].cx(3, 2)
+
     mo.vstack([v.draw() for v in post.values()])
     return (post,)
 
@@ -138,7 +143,7 @@ def _(DensityMatrix, QuantumCircuit, partial_trace):
 
 
 @app.cell
-def _(DensityMatrix, QuantumCircuit, Statevector, np, partial_trace):
+def _(DensityMatrix, QuantumCircuit, np, partial_trace):
     def remote_cx(psi):
         # Define remote circuit
         remote_circuit = QuantumCircuit(2)
@@ -152,7 +157,7 @@ def _(DensityMatrix, QuantumCircuit, Statevector, np, partial_trace):
         pre = QuantumCircuit(4)
         pre.append(remote_circuit.to_gate(), [1, 3])
         pre.cx(0, 1)
-        psi_pre = Statevector.from_circuit(pre)
+        psi_pre = psi.evolve(pre)
 
         # Branch on measurement outcomes
         branches = {}
@@ -161,10 +166,12 @@ def _(DensityMatrix, QuantumCircuit, Statevector, np, partial_trace):
             branches[outcome] = statevector
 
         # Continue circuit on both branches
-        post = {k: QuantumCircuit(4) for k in ['0', '1']}
-        post['0'].cx(3, 2)
+        post = {k: QuantumCircuit(4) for k in branches.keys()}
         post['1'].rx(np.pi, 3)
-        post['1'].cx(3, 2)
+        for outcome in branches.keys():
+            post[outcome].x(2)
+            post[outcome].cx(3, 2)
+
         for outcome, statevector in branches.items():
             branches[outcome] = statevector.evolve(post[outcome])
 
@@ -198,7 +205,7 @@ def _(embed_state, local_cx, remote_cx, state_fidelity):
 
 @app.cell
 def _(Statevector, compare_remote_local):
-    _label = '1+'
+    _label = '01'
     _psi = Statevector.from_label(_label)
     compare_remote_local(_psi)
     return
