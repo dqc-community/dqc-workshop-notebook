@@ -56,10 +56,11 @@ with app.setup(hide_code=True):
 
     # bosonic
     import bosonic_sdk
-    from bosonic_converters import CircuitConverters # sufficiently self-explanatory
+    from bosonic_converters import CircuitConverters  # sufficiently self-explanatory
 
     # filter warnings
     import warnings
+
     warnings.filterwarnings(
         "ignore",
         category=DeprecationWarning,
@@ -67,20 +68,20 @@ with app.setup(hide_code=True):
 
     # config constants
     VERIFY_CFG = {
-        'N_LIST': range(3, 21), # circuit sizes to sweep over
-        'SHOTS': 2048, # number of times to simulate each circuit
-        'SEED': 1234, # RNG seed to ensure reproducibility
+        "N_LIST": range(3, 21),  # circuit sizes to sweep over
+        "SHOTS": 2048,  # number of times to simulate each circuit
+        "SEED": 1234,  # RNG seed to ensure reproducibility
     }
 
     SCALING_CFG = {
-        'N_LIST': range(3, 128),
-        'QUBITS_PER_TRAP': 32,
+        "N_LIST": range(3, 128),
+        "QUBITS_PER_TRAP": 32,
     }
 
     TTS_CFG = {
-        'SHOTS': 1024,
-        'N_LIST': range(5, 126, 5),
-        'QUBITS_PER_TRAP': 128,
+        "SHOTS": 1024,
+        "N_LIST": range(5, 126, 5),
+        "QUBITS_PER_TRAP": 128,
     }
 
 
@@ -117,7 +118,7 @@ def _():
 
     If we want to study the difference between monolithic and distributed quantum circuits, why are we using two processors with different qubit modalities? Aren't we just comparing a superconducting QPU to a trapped-ion QPU, rather than a true monolithic-distributed comparison?
 
-    The reason we do this is because we care about studying the behavior of circuits as they scale with qubit count. Larger circuits require more qubits to be entangled with each other, so **performance** will be linked to **connectivity** – how costly is it to entangle a given pair of qubits given the physical constraints of the QPU? On monolithic architectures, qubits must routed to form these connection, whether that routing is virtual (e.g., SWAP gates to exchange the quantum state of two qubits) or physical (e.g., shuttling two ions to a separate portion of the trap where an entangling gate is performed). In a distributed architecture, routing costs are determined by the cost of establishing a remote link, which does not scale with system size. But in a monolithic architecture, routing costs increase as the QPU becomes larger (longer SWAP chains, longer shuttling times) and more complex (imagine a city at rush hour vs. at midnight).
+    The reason we do this is because we care about studying the behavior of circuits as they scale with qubit count. Larger circuits require more qubits to be entangled with each other, so **performance** will be linked to **connectivity** – how costly is it to entangle a given pair of qubits given the physical constraints of the QPU? On monolithic architectures, qubits must be routed to form these connections, whether that routing is virtual (e.g., SWAP gates to exchange the quantum state of two qubits) or physical (e.g., shuttling two ions to a separate portion of the trap where an entangling gate is performed). In a distributed architecture, routing costs are determined by the cost of establishing a remote link, which does not scale with system size. But in a monolithic architecture, routing costs increase as the QPU becomes larger (longer SWAP chains, longer shuttling times) and more complex (imagine a city at rush hour vs. at midnight).
 
     The reason we choose a superconducting QPU as our monolithic processor is because physical qubit routing is impossible, which means that all routing operations show up as gates in the quantum circuit. Physical routing operations don't show up as gates in a circuit, so we would not be able to use the transpiled quantum circuit to tell us anything about the routing complexity and its impact on circuit execution times and error rates. Because our distributed architecture records all routing operations as quantum gates appearing in the circuit, we need to choose a monolithic processor with the same restriction.
     """)
@@ -274,7 +275,11 @@ def _():
 
 @app.cell
 def _(FAKE_IBM_BACKEND):
-    qiskit.visualization.plot_gate_map(FAKE_IBM_BACKEND) if qiskit.utils.optionals.HAS_GRAPHVIZ else 'Missing graphviz dependency!'
+    (
+        qiskit.visualization.plot_gate_map(FAKE_IBM_BACKEND)
+        if qiskit.utils.optionals.HAS_GRAPHVIZ
+        else "Missing graphviz dependency!"
+    )
     return
 
 
@@ -297,7 +302,7 @@ def _():
 @app.cell
 def _():
     ibm_circ3 = ghz_circuit(3)
-    ibm_circ3.draw('mpl')
+    ibm_circ3.draw("mpl")
     return (ibm_circ3,)
 
 
@@ -329,7 +334,7 @@ def _():
 @app.cell
 def _(FAKE_IBM_BACKEND, ibm_circ3):
     ibm_transpiled3 = qiskit.transpile(ibm_circ3, backend=FAKE_IBM_BACKEND)
-    ibm_transpiled3.draw('mpl')
+    ibm_transpiled3.draw("mpl")
     return (ibm_transpiled3,)
 
 
@@ -357,7 +362,11 @@ def _():
 
 @app.cell
 def _(ibm_transpiled3):
-    ibm_result3 = qiskit_aer.AerSimulator().run(ibm_transpiled3, shots=VERIFY_CFG['SHOTS']).result()
+    ibm_result3 = (
+        qiskit_aer.AerSimulator()
+        .run(ibm_transpiled3, shots=VERIFY_CFG["SHOTS"])
+        .result()
+    )
     ibm_result3.to_dict()
     return (ibm_result3,)
 
@@ -394,9 +403,11 @@ def _():
 
 @app.function
 def ghz_fidelity_proxy(counts):
-    n = min(len(k) for k in counts.keys()) # compute n using length of measured bitstrings
-    shots = sum(counts.values()) # sum measurement counts over all bitstrings
-    return (counts.get('0' * n, 0) + counts.get('1' * n, 0)) / shots
+    n = min(
+        len(k) for k in counts.keys()
+    )  # compute n using length of measured bitstrings
+    shots = sum(counts.values())  # sum measurement counts over all bitstrings
+    return (counts.get("0" * n, 0) + counts.get("1" * n, 0)) / shots
 
 
 @app.cell
@@ -415,15 +426,15 @@ def _():
 
 @app.cell
 def _(FAKE_IBM_BACKEND):
-    def verify_ghz_ibm(n, shots=VERIFY_CFG['SHOTS']):
+    def verify_ghz_ibm(n, shots=VERIFY_CFG["SHOTS"]):
         circ = qiskit.transpile(ghz_circuit(n), backend=FAKE_IBM_BACKEND)
         counts = qiskit_aer.AerSimulator().run(circ, shots=shots).result().get_counts()
         data = {
-            'backend': 'IBM',
-            'n': n,
-            'depth': circ.depth(),
-            'count0': counts.get('0' * n, 0),
-            'count1': counts.get('1' * n, 0),
+            "backend": "IBM",
+            "n": n,
+            "depth": circ.depth(),
+            "count0": counts.get("0" * n, 0),
+            "count1": counts.get("1" * n, 0),
         }
         return data
 
@@ -432,7 +443,7 @@ def _(FAKE_IBM_BACKEND):
 
 @app.cell
 def _(verify_ghz_ibm):
-    ibm_data = [verify_ghz_ibm(n) for n in VERIFY_CFG['N_LIST']]
+    ibm_data = [verify_ghz_ibm(n) for n in VERIFY_CFG["N_LIST"]]
     pd.DataFrame(ibm_data)
     return (ibm_data,)
 
@@ -468,12 +479,25 @@ def _():
         fig, ax = plt.subplots(figsize=(12.5, 6.6))
         ax.set_xlim(0, 14)
         ax.set_ylim(0, 7)
-        ax.axis('off')
+        ax.axis("off")
 
-        def box(x, y, w, h, label, fc='#f7f7f7', ec='#333333', lw=1.8, size=10, weight='normal'):
+        def box(
+            x,
+            y,
+            w,
+            h,
+            label,
+            fc="#f7f7f7",
+            ec="#333333",
+            lw=1.8,
+            size=10,
+            weight="normal",
+        ):
             patch = FancyBboxPatch(
-                (x, y), w, h,
-                boxstyle='round,pad=0.05,rounding_size=0.08',
+                (x, y),
+                w,
+                h,
+                boxstyle="round,pad=0.05,rounding_size=0.08",
                 facecolor=fc,
                 edgecolor=ec,
                 linewidth=lw,
@@ -483,8 +507,8 @@ def _():
                 x + w / 2,
                 y + h / 2,
                 label,
-                ha='center',
-                va='center',
+                ha="center",
+                va="center",
                 fontsize=size,
                 weight=weight,
                 linespacing=1.15,
@@ -492,30 +516,52 @@ def _():
             return patch
 
         def module(x, y, name):
-            box(x, y, 3.85, 2.15, '', fc='#eef5ff', ec='#2b5c8a', lw=2.0)
+            box(x, y, 3.85, 2.15, "", fc="#eef5ff", ec="#2b5c8a", lw=2.0)
             ax.text(
                 x + 1.925,
                 y + 1.83,
                 name,
-                ha='center',
-                va='center',
+                ha="center",
+                va="center",
                 fontsize=12,
-                weight='bold',
-                color='#1f4e79',
+                weight="bold",
+                color="#1f4e79",
             )
-            box(x + 0.35, y + 0.58, 1.55, 0.92, 'Data\nqubits', fc='#dbeafe', ec='#2b5c8a', size=8.8, weight='bold')
-            box(x + 2.08, y + 0.58, 1.42, 0.92, 'Communication\nqubits', fc='#dcfce7', ec='#2f7d32', size=8.2, weight='bold')
+            box(
+                x + 0.35,
+                y + 0.58,
+                1.55,
+                0.92,
+                "Data\nqubits",
+                fc="#dbeafe",
+                ec="#2b5c8a",
+                size=8.8,
+                weight="bold",
+            )
+            box(
+                x + 2.08,
+                y + 0.58,
+                1.42,
+                0.92,
+                "Communication\nqubits",
+                fc="#dcfce7",
+                ec="#2f7d32",
+                size=8.2,
+                weight="bold",
+            )
             ax.annotate(
-                '',
+                "",
                 xy=(x + 2.08, y + 1.04),
                 xytext=(x + 1.90, y + 1.04),
-                arrowprops=dict(arrowstyle='<->', lw=1.6, color='#333333', shrinkA=3, shrinkB=3),
+                arrowprops=dict(
+                    arrowstyle="<->", lw=1.6, color="#333333", shrinkA=3, shrinkB=3
+                ),
             )
             return (x + 2.79, y + 1.04)
 
-        module(0.65, 4.35, 'Module A')
-        module(9.5, 4.35, 'Module B')
-        module(5.05, 0.55, 'Module C')
+        module(0.65, 4.35, "Module A")
+        module(9.5, 4.35, "Module B")
+        module(5.05, 0.55, "Module C")
 
         # Anchor arrows on the edges of the communication boxes so they do not cross the text.
         comm_a_edge = (3.78, 4.93)
@@ -523,7 +569,18 @@ def _():
         comm_c_edge = (7.00, 2.70)
 
         switch_center = (7.0, 3.55)
-        box(5.35, 3.0, 3.3, 1.1, 'Central Optical \nControl System', fc='#fff7ed', ec='#b45309', lw=2.2, size=11.5, weight='bold')
+        box(
+            5.35,
+            3.0,
+            3.3,
+            1.1,
+            "Central Optical \nControl System",
+            fc="#fff7ed",
+            ec="#b45309",
+            lw=2.2,
+            size=11.5,
+            weight="bold",
+        )
 
         links = [
             (comm_a_edge, (5.35, 3.62)),
@@ -531,30 +588,35 @@ def _():
         ]
         for start, end in links:
             ax.annotate(
-                '',
+                "",
                 xy=end,
                 xytext=start,
-                arrowprops=dict(arrowstyle='<->', lw=2.0, color='#7c3aed', shrinkA=3, shrinkB=3),
+                arrowprops=dict(
+                    arrowstyle="<->", lw=2.0, color="#7c3aed", shrinkA=3, shrinkB=3
+                ),
             )
 
         # Draw the Module C connection manually so it stays visible and avoids labels.
         ax.annotate(
-            '',
+            "",
             xy=(8.00, 2.1),
             xytext=(8.00, 2.95),
-            arrowprops=dict(arrowstyle='<->', lw=2.0, color='#7c3aed', shrinkA=0, shrinkB=0),
+            arrowprops=dict(
+                arrowstyle="<->", lw=2.0, color="#7c3aed", shrinkA=0, shrinkB=0
+            ),
         )
 
         ax.text(
             7.0,
             7,
-            'Bosonic architecture: modules connected by an optical entanglement network',
-            ha='center',
-            va='center',
+            "Bosonic architecture: modules connected by an optical entanglement network",
+            ha="center",
+            va="center",
             fontsize=13,
-            weight='bold',
+            weight="bold",
         )
         plt.show()
+
     _draw_bosonic_architecture_diagram()
     return
 
@@ -596,11 +658,17 @@ def _():
 @app.cell
 def _():
     _n = 3
-    _transpiled = compile_bosonic_circuit(ghz_circuit(_n), _n, 2, bosonic_sdk.BosonicDistributor())
-    mo.vstack([
-        mo.md(f"GHZ circuit with {_n} data qubits has depth {_transpiled.depth()}."),
-        _transpiled.draw('mpl')
-    ])
+    _transpiled = compile_bosonic_circuit(
+        ghz_circuit(_n), _n, 2, bosonic_sdk.BosonicDistributor()
+    )
+    mo.vstack(
+        [
+            mo.md(
+                f"GHZ circuit with {_n} data qubits has depth {_transpiled.depth()}."
+            ),
+            _transpiled.draw("mpl"),
+        ]
+    )
     return
 
 
@@ -628,23 +696,25 @@ def _():
 
 
 @app.function
-def verify_ghz_bosonic(n, shots=VERIFY_CFG['SHOTS'], traps=2):
+def verify_ghz_bosonic(n, shots=VERIFY_CFG["SHOTS"], traps=2):
     distributor = bosonic_sdk.BosonicDistributor()
     circuit = compile_bosonic_circuit(ghz_circuit(n), n, traps, distributor)
-    counts, _ = bosonic_sdk.Simulator().run_counts(circuit, ignore_c_remote=True, shots=shots)
+    counts, _ = bosonic_sdk.Simulator().run_counts(
+        circuit, ignore_c_remote=True, shots=shots
+    )
     data = {
-        'backend': 'Bosonic',
-        'n': n,
-        'depth': circuit.depth(),
-        'count0': counts.get('0' * n, 0),
-        'count1': counts.get('1' * n, 0),
+        "backend": "Bosonic",
+        "n": n,
+        "depth": circuit.depth(),
+        "count0": counts.get("0" * n, 0),
+        "count1": counts.get("1" * n, 0),
     }
     return data
 
 
 @app.cell
 def _():
-    bosonic_data = [verify_ghz_bosonic(n) for n in VERIFY_CFG['N_LIST']]
+    bosonic_data = [verify_ghz_bosonic(n) for n in VERIFY_CFG["N_LIST"]]
     pd.DataFrame(bosonic_data)
     return (bosonic_data,)
 
@@ -686,7 +756,9 @@ def _():
 
 @app.cell
 def _(verify_df):
-    verify_df['fidelity'] = (verify_df['count0'] + verify_df['count1']) / VERIFY_CFG['SHOTS']
+    verify_df["fidelity"] = (verify_df["count0"] + verify_df["count1"]) / VERIFY_CFG[
+        "SHOTS"
+    ]
     return
 
 
@@ -709,7 +781,9 @@ def _():
 
 @app.cell
 def _(verify_df):
-    verify_df['dispersion'] = np.abs(verify_df['count0'] - verify_df['count1']) / VERIFY_CFG['SHOTS']
+    verify_df["dispersion"] = (
+        np.abs(verify_df["count0"] - verify_df["count1"]) / VERIFY_CFG["SHOTS"]
+    )
     return
 
 
@@ -726,9 +800,9 @@ def _():
 
 @app.cell
 def _(verify_df):
-    verify_df.groupby('backend').agg(
-        min_fidelity=('fidelity', 'min'),
-        max_dispersion=('dispersion', 'max'),
+    verify_df.groupby("backend").agg(
+        min_fidelity=("fidelity", "min"),
+        max_dispersion=("dispersion", "max"),
     )
     return
 
@@ -743,23 +817,23 @@ def _():
 
 @app.cell
 def _(verify_df):
-    for _backend in ['IBM', 'Bosonic']:
-        subdf = verify_df[verify_df['backend'] == _backend]
+    for _backend in ["IBM", "Bosonic"]:
+        subdf = verify_df[verify_df["backend"] == _backend]
         plt.scatter(
-            subdf['count0'] / VERIFY_CFG['SHOTS'],
-            subdf['count1'] / VERIFY_CFG['SHOTS'],
+            subdf["count0"] / VERIFY_CFG["SHOTS"],
+            subdf["count1"] / VERIFY_CFG["SHOTS"],
             label=_backend,
             alpha=0.5,
         )
 
-    plt.xlabel(r'$\Pr(0^n)$')
+    plt.xlabel(r"$\Pr(0^n)$")
     plt.xlim(0.45, 0.55)
 
-    plt.ylabel(r'$\Pr(1^n)$')
+    plt.ylabel(r"$\Pr(1^n)$")
     plt.ylim(0.45, 0.55)
 
-    plt.title('Measurement Results')
-    plt.legend(title='Backend')
+    plt.title("Measurement Results")
+    plt.legend(title="Backend")
 
     plt.tight_layout()
     plt.show()
@@ -821,9 +895,7 @@ def _():
 
 @app.cell
 def _():
-    bosonic_sdk.GateStatistics.stats(
-        CircuitConverters.from_qiskit(ghz_circuit(5))
-    )
+    bosonic_sdk.GateStatistics.stats(CircuitConverters.from_qiskit(ghz_circuit(5)))
     return
 
 
@@ -838,14 +910,18 @@ def _():
 @app.function
 def qiskit_metrics(circuit):
     count_ops = lambda x: sum(inst.operation.name == x for inst in circuit.data)
-    gate_ops = [inst for inst in circuit.data if inst.operation.name not in ['measure', 'reset', 'barrier', 'rz']]
+    gate_ops = [
+        inst
+        for inst in circuit.data
+        if inst.operation.name not in ["measure", "reset", "barrier", "rz"]
+    ]
     data = {
-        'measure_count': count_ops('measure'),
-        'reset_count': count_ops('reset'),
-        'barrier_count': count_ops('barrier'),
-        'single_qubit_count': sum(len(inst.qubits) == 1 for inst in gate_ops),
-        'two_qubit_count': sum(len(inst.qubits) == 2 for inst in gate_ops),
-        'multi_qubit_count': sum(len(inst.qubits) > 2 for inst in gate_ops),
+        "measure_count": count_ops("measure"),
+        "reset_count": count_ops("reset"),
+        "barrier_count": count_ops("barrier"),
+        "single_qubit_count": sum(len(inst.qubits) == 1 for inst in gate_ops),
+        "two_qubit_count": sum(len(inst.qubits) == 2 for inst in gate_ops),
+        "multi_qubit_count": sum(len(inst.qubits) > 2 for inst in gate_ops),
     }
     return data
 
@@ -874,9 +950,13 @@ def _():
 
 @app.cell
 def _(FAKE_IBM_BACKEND):
-    def scale_ibm(n, constructor=ghz_circuit, backend=FAKE_IBM_BACKEND, **transpile_kwargs):
-        circuit = qiskit.transpile(constructor(n), backend=FAKE_IBM_BACKEND, **transpile_kwargs)
-        data = {'backend': 'IBM', 'n': n, 'k': 1, 'circuit': circuit}
+    def scale_ibm(
+        n, constructor=ghz_circuit, backend=FAKE_IBM_BACKEND, **transpile_kwargs
+    ):
+        circuit = qiskit.transpile(
+            constructor(n), backend=FAKE_IBM_BACKEND, **transpile_kwargs
+        )
+        data = {"backend": "IBM", "n": n, "k": 1, "circuit": circuit}
         return data
 
     return (scale_ibm,)
@@ -886,12 +966,12 @@ def _(FAKE_IBM_BACKEND):
 def scale_bosonic(
     n,
     constructor=ghz_circuit,
-    qubits_per_trap=SCALING_CFG['QUBITS_PER_TRAP'],
+    qubits_per_trap=SCALING_CFG["QUBITS_PER_TRAP"],
     distributor=bosonic_sdk.BosonicDistributor(),
 ):
     k = np.ceil(n / qubits_per_trap).astype(int)
     circuit = compile_bosonic_circuit(constructor(n), n, k, distributor)
-    data = {'backend': 'Bosonic', 'n': n, 'k': k, 'circuit': circuit}
+    data = {"backend": "Bosonic", "n": n, "k": k, "circuit": circuit}
     return data
 
 
@@ -907,12 +987,12 @@ def _():
 def _(scale_ibm):
     if mo.running_in_notebook():
         _iter = mo.status.progress_bar(
-            SCALING_CFG['N_LIST'],
-            title='Compiling',
-            subtitle='Monolithic IBM backend',
+            SCALING_CFG["N_LIST"],
+            title="Compiling",
+            subtitle="Monolithic IBM backend",
         )
     else:
-        _iter = SCALING_CFG['N_LIST']
+        _iter = SCALING_CFG["N_LIST"]
 
     ibm_circuits = [scale_ibm(n, optimization_level=3) for n in _iter]
     return (ibm_circuits,)
@@ -922,12 +1002,12 @@ def _(scale_ibm):
 def _():
     if mo.running_in_notebook():
         _iter = mo.status.progress_bar(
-            SCALING_CFG['N_LIST'],
-            title='Compiling',
-            subtitle='Distributed Bosonic backend',
+            SCALING_CFG["N_LIST"],
+            title="Compiling",
+            subtitle="Distributed Bosonic backend",
         )
     else:
-        _iter = SCALING_CFG['N_LIST']
+        _iter = SCALING_CFG["N_LIST"]
 
     bosonic_circuits = [scale_bosonic(n) for n in _iter]
     return (bosonic_circuits,)
@@ -936,15 +1016,17 @@ def _():
 @app.cell
 def _(bosonic_circuits, ibm_circuits):
     circuit_df = pd.DataFrame(ibm_circuits + bosonic_circuits)
-    circuit_df.loc[:, circuit_df.columns != 'circuit'] # including circuit column breaks marimo display
+    circuit_df.loc[
+        :, circuit_df.columns != "circuit"
+    ]  # including circuit column breaks marimo display
     return (circuit_df,)
 
 
 @app.cell
 def _(circuit_df):
-    _metrics = lambda g: pd.Series(circuit_metrics(g['circuit']))
+    _metrics = lambda g: pd.Series(circuit_metrics(g["circuit"]))
     scaling_df = circuit_df.join(circuit_df.apply(_metrics, axis=1))
-    scaling_df.loc[:, scaling_df.columns != 'circuit']
+    scaling_df.loc[:, scaling_df.columns != "circuit"]
     return (scaling_df,)
 
 
@@ -974,17 +1056,17 @@ def _():
 
 @app.function
 def plot_scaling_metric(df, metric, **kwargs):
-    for _backend in ['IBM', 'Bosonic']:
-        subdf = df[df['backend'] == _backend]
-        plt.plot(subdf['n'], subdf[metric], label=_backend)
+    for _backend in ["IBM", "Bosonic"]:
+        subdf = df[df["backend"] == _backend]
+        plt.plot(subdf["n"], subdf[metric], label=_backend)
 
-    plt.title(kwargs.get('title', 'Scaling Behavior'))
+    plt.title(kwargs.get("title", "Scaling Behavior"))
 
-    plt.xlabel('Number of Qubits')
-    plt.xscale(kwargs.get('xscale', 'linear'))
-    plt.ylabel(kwargs.get('ylabel', metric))
-    plt.yscale(kwargs.get('yscale', 'linear'))
-    plt.legend(title='Backend')
+    plt.xlabel("Number of Qubits")
+    plt.xscale(kwargs.get("xscale", "linear"))
+    plt.ylabel(kwargs.get("ylabel", metric))
+    plt.yscale(kwargs.get("yscale", "linear"))
+    plt.legend(title="Backend")
 
     plt.tight_layout()
     plt.show()
@@ -993,7 +1075,7 @@ def plot_scaling_metric(df, metric, **kwargs):
 @app.cell
 def _(scaling_df):
     plot_scaling_metric(
-        scaling_df, 'depth', title='GHZ Scaling', ylabel='Circuit Depth'
+        scaling_df, "depth", title="GHZ Scaling", ylabel="Circuit Depth"
     )
     return
 
@@ -1001,7 +1083,7 @@ def _(scaling_df):
 @app.cell
 def _(scaling_df):
     plot_scaling_metric(
-        scaling_df, 'two_qubit_count', title='GHZ Scaling', ylabel='Two-Qubit Gates'
+        scaling_df, "two_qubit_count", title="GHZ Scaling", ylabel="Two-Qubit Gates"
     )
     return
 
@@ -1009,7 +1091,10 @@ def _(scaling_df):
 @app.cell
 def _(scaling_df):
     plot_scaling_metric(
-        scaling_df, 'single_qubit_count', title='GHZ Scaling', ylabel='Single-Qubit Gates'
+        scaling_df,
+        "single_qubit_count",
+        title="GHZ Scaling",
+        ylabel="Single-Qubit Gates",
     )
     return
 
@@ -1017,7 +1102,10 @@ def _(scaling_df):
 @app.cell
 def _(scaling_df):
     plot_scaling_metric(
-        scaling_df, 'qubit_teleportation_count', title='GHZ Scaling', ylabel='Teleportation Gates'
+        scaling_df,
+        "qubit_teleportation_count",
+        title="GHZ Scaling",
+        ylabel="Teleportation Gates",
     )
     return
 
@@ -1093,38 +1181,35 @@ def _(FAKE_IBM_BACKEND):
     def instruction_data(inst, backend=FAKE_IBM_BACKEND):
         op, qtuple = inst
         data = {
-            'name': op.name,
-            'qubits': qtuple,
+            "name": op.name,
+            "qubits": qtuple,
         }
         props = backend.target[op.name].get(qtuple) if qtuple else None
         if props:
-            data.update({
-                'duration': props.duration,
-                'error': props.error,
-            })
+            data.update(
+                {
+                    "duration": props.duration,
+                    "error": props.error,
+                }
+            )
 
         return data
-
 
     op_df = pd.DataFrame(
         [instruction_data(inst) for inst in FAKE_IBM_BACKEND.target.instructions]
     )
 
-    op_df[
-        op_df['error'] < 1 # ignore ecr gates with error = 1
-    ].melt(
-        id_vars=['name'],
-        value_vars=['duration','error'],
-        var_name='variable',
-        value_name='value',
-    ).groupby(
-        ['name', 'variable']
-    ).agg(
-        mean=('value', 'mean'),
+    op_df[op_df["error"] < 1].melt(  # ignore ecr gates with error = 1
+        id_vars=["name"],
+        value_vars=["duration", "error"],
+        var_name="variable",
+        value_name="value",
+    ).groupby(["name", "variable"]).agg(
+        mean=("value", "mean"),
     ).reset_index().pivot_table(
-        index='name',
-        columns='variable',
-        values='mean',
+        index="name",
+        columns="variable",
+        values="mean",
     )
     return
 
@@ -1139,7 +1224,7 @@ def _():
 
 @app.cell
 def _(device_df, scaling_df):
-    _merged = scaling_df.merge(device_df, on='backend')
+    _merged = scaling_df.merge(device_df, on="backend")
     _merged.info()
     return
 
@@ -1175,11 +1260,11 @@ def _():
 @app.function
 def T_shot(data):
     t_compute = (
-        data['t1q'] * data['single_qubit_count'] +
-        data['t2q'] *  data['two_qubit_count'] +
-        data['t_meas'] * data['measure_count']
+        data["t1q"] * data["single_qubit_count"]
+        + data["t2q"] * data["two_qubit_count"]
+        + data["t_meas"] * data["measure_count"]
     )
-    return t_compute + data['t_overhead']
+    return t_compute + data["t_overhead"]
 
 
 @app.cell(hide_code=True)
@@ -1204,10 +1289,9 @@ def _():
 @app.function
 def shot_success_log_prob(data):
     """Independent-gate success proxy from 1Q/2Q error rates."""
-    return (
-        data['single_qubit_count'] * np.log1p(-data['e1q']) +
-        data['two_qubit_count'] * np.log1p(-data['e2q'])
-    )
+    return data["single_qubit_count"] * np.log1p(-data["e1q"]) + data[
+        "two_qubit_count"
+    ] * np.log1p(-data["e2q"])
 
 
 @app.cell(hide_code=True)
@@ -1235,14 +1319,14 @@ def _():
 
 
 @app.function
-def tts_data_series(df, shots=TTS_CFG['SHOTS']):
-    data = {'log_pr_success': shot_success_log_prob(df)}
-    data['t_shot'] = T_shot(df)
-    data['log_t_shot'] = np.log(data['t_shot'])
-    data['t_shot_compute'] = data['t_shot'] - df['t_overhead']
-    data['log_tts_ideal'] = np.log(shots) + np.log(data['t_shot'])
-    data['log_tts'] = data['log_tts_ideal'] - data['log_pr_success']
-    data['tts'] = np.exp(data['log_tts'])
+def tts_data_series(df, shots=TTS_CFG["SHOTS"]):
+    data = {"log_pr_success": shot_success_log_prob(df)}
+    data["t_shot"] = T_shot(df)
+    data["log_t_shot"] = np.log(data["t_shot"])
+    data["t_shot_compute"] = data["t_shot"] - df["t_overhead"]
+    data["log_tts_ideal"] = np.log(shots) + np.log(data["t_shot"])
+    data["log_tts"] = data["log_tts_ideal"] - data["log_pr_success"]
+    data["tts"] = np.exp(data["log_tts"])
     return pd.Series(data)
 
 
@@ -1257,7 +1341,7 @@ def _():
 @app.cell
 def _(device_df, scaling_df):
     tts_df = scaling_df.join(
-        scaling_df.merge(device_df, on='backend').apply(tts_data_series, axis=1)
+        scaling_df.merge(device_df, on="backend").apply(tts_data_series, axis=1)
     )
     tts_df.info()
     return (tts_df,)
@@ -1276,7 +1360,11 @@ def _():
 @app.cell
 def _(tts_df):
     plot_scaling_metric(
-        tts_df, 't_shot', title='GHZ Scaling', ylabel='Shot Duration (seconds)', yscale='log',
+        tts_df,
+        "t_shot",
+        title="GHZ Scaling",
+        ylabel="Shot Duration (seconds)",
+        yscale="log",
     )
     return
 
@@ -1284,7 +1372,11 @@ def _(tts_df):
 @app.cell
 def _(tts_df):
     plot_scaling_metric(
-        tts_df, 'tts', title='GHZ Scaling', ylabel='Time-to-Solution (seconds)', yscale='log',
+        tts_df,
+        "tts",
+        title="GHZ Scaling",
+        ylabel="Time-to-Solution (seconds)",
+        yscale="log",
     )
     return
 
@@ -1337,10 +1429,10 @@ def _():
 @app.cell
 def _(scaling_df):
     df_linear_fit = scaling_df.melt(
-        id_vars = ['backend', 'n'],
-        value_vars = ['single_qubit_count', 'two_qubit_count', 'measure_count'],
-        var_name = 'gate_type',
-        value_name = 'gate_count',
+        id_vars=["backend", "n"],
+        value_vars=["single_qubit_count", "two_qubit_count", "measure_count"],
+        var_name="gate_type",
+        value_name="gate_count",
     )
     df_linear_fit
     return (df_linear_fit,)
@@ -1357,11 +1449,11 @@ def _():
 @app.cell
 def _(df_linear_fit):
     def _fit(g):
-        slope, intercept = np.polyfit(g['n'], g['gate_count'], 1)
-        return pd.Series({'slope': slope, 'intercept': intercept})
+        slope, intercept = np.polyfit(g["n"], g["gate_count"], 1)
+        return pd.Series({"slope": slope, "intercept": intercept})
 
     fits = (
-        df_linear_fit.groupby(['backend', 'gate_type'])
+        df_linear_fit.groupby(["backend", "gate_type"])
         .apply(_fit, include_groups=False)
         .reset_index()
     )
@@ -1380,9 +1472,9 @@ def _():
 @app.cell
 def _(fits):
     _preds = fits.copy()
-    _preds['n'] = 10000
-    _preds['gate_count_predicted'] = np.ceil(
-        _preds['intercept'] + _preds['slope'] * _preds['n']
+    _preds["n"] = 10000
+    _preds["gate_count_predicted"] = np.ceil(
+        _preds["intercept"] + _preds["slope"] * _preds["n"]
     ).astype(int)
     _preds
     return
@@ -1398,7 +1490,7 @@ def _():
 
 @app.cell
 def _(fits):
-    fits.merge(pd.DataFrame({'n': np.logspace(3, 5, 10).astype(int)}), how='cross')
+    fits.merge(pd.DataFrame({"n": np.logspace(3, 5, 10).astype(int)}), how="cross")
     return
 
 
@@ -1413,28 +1505,29 @@ def _():
 @app.function
 def gate_count_prediction(df, nvals):
     def _fit(g):
-        slope, intercept = np.polyfit(g['n'], g['gate_count'], 1)
-        return pd.Series({'slope': slope, 'intercept': intercept})
+        slope, intercept = np.polyfit(g["n"], g["gate_count"], 1)
+        return pd.Series({"slope": slope, "intercept": intercept})
 
     fits = (
         df.melt(
-            id_vars = ['backend', 'n'],
-            value_vars = ['single_qubit_count', 'two_qubit_count', 'measure_count'],
-            var_name = 'gate_type',
-            value_name = 'gate_count',
-        ).groupby(['backend', 'gate_type'])
+            id_vars=["backend", "n"],
+            value_vars=["single_qubit_count", "two_qubit_count", "measure_count"],
+            var_name="gate_type",
+            value_name="gate_count",
+        )
+        .groupby(["backend", "gate_type"])
         .apply(_fit, include_groups=False)
         .reset_index()
     )
-    preds = fits.merge(pd.DataFrame({'n': nvals}), how='cross')
-    preds['gate_count_predicted'] = np.ceil(
-        preds['intercept'] + preds['slope'] * preds['n']
+    preds = fits.merge(pd.DataFrame({"n": nvals}), how="cross")
+    preds["gate_count_predicted"] = np.ceil(
+        preds["intercept"] + preds["slope"] * preds["n"]
     ).astype(int)
-    return preds.pivot_table( # go back to one column for each gate type
-        index=['backend', 'n'],
-        columns='gate_type',
-        values='gate_count_predicted',
-        aggfunc='first',
+    return preds.pivot_table(  # go back to one column for each gate type
+        index=["backend", "n"],
+        columns="gate_type",
+        values="gate_count_predicted",
+        aggfunc="first",
     ).reset_index()
 
 
@@ -1456,7 +1549,7 @@ def _():
 @app.cell
 def _(device_df, pred_df):
     extrapolation_df = pred_df.join(
-        pred_df.merge(device_df, on='backend').apply(tts_data_series, axis=1)
+        pred_df.merge(device_df, on="backend").apply(tts_data_series, axis=1)
     )
     return (extrapolation_df,)
 
@@ -1474,9 +1567,12 @@ def _():
 @app.cell
 def _(extrapolation_df):
     plot_scaling_metric(
-        extrapolation_df, 'two_qubit_count',
-        title='Extrapolated GHZ Scaling',
-        xscale='log', yscale='log', ylabel='Projected Two-Qubit Gate Count'
+        extrapolation_df,
+        "two_qubit_count",
+        title="Extrapolated GHZ Scaling",
+        xscale="log",
+        yscale="log",
+        ylabel="Projected Two-Qubit Gate Count",
     )
     return
 
@@ -1485,9 +1581,12 @@ def _(extrapolation_df):
 def _(extrapolation_df):
     # TODO: add ylim handling
     plot_scaling_metric(
-        extrapolation_df, 'log_tts',
-        title='Extrapolated GHZ Scaling',
-        xscale='log', yscale='linear', ylabel='Log Time-to-Solution (seconds)'
+        extrapolation_df,
+        "log_tts",
+        title="Extrapolated GHZ Scaling",
+        xscale="log",
+        yscale="linear",
+        ylabel="Log Time-to-Solution (seconds)",
     )
     return
 
@@ -1528,7 +1627,9 @@ def _():
 def _(FAKE_IBM_BACKEND):
     # compilation is non-deterministic – run this cell a few times to see the changes
     qiskit.visualization.timeline.draw(
-        qiskit.transpile(ghz_circuit(7), backend=FAKE_IBM_BACKEND, optimization_level=3),
+        qiskit.transpile(
+            ghz_circuit(7), backend=FAKE_IBM_BACKEND, optimization_level=3
+        ),
         target=FAKE_IBM_BACKEND.target,
         show_idle=False,
     )
@@ -1546,13 +1647,13 @@ def _():
 @app.cell
 def _(FAKE_IBM_BACKEND):
     def _duration(circuit):
-        transpiled =  qiskit.transpile(
+        transpiled = qiskit.transpile(
             circuit, backend=FAKE_IBM_BACKEND, optimization_level=3
         )
         return transpiled.estimate_duration(target=FAKE_IBM_BACKEND.target)
 
     _circuit = ghz_circuit(7)
-    plt.hist(pd.DataFrame({'duration': [_duration(_circuit) for _ in range(100)]}))
+    plt.hist(pd.DataFrame({"duration": [_duration(_circuit) for _ in range(100)]}))
     return
 
 
@@ -1568,21 +1669,21 @@ def _():
 
 @app.cell
 def _(FAKE_IBM_BACKEND, device_df, tts_df):
-    tts_comp_df = tts_df.loc[tts_df['backend'] == 'IBM', ['n', 't_shot', 'circuit']]
+    tts_comp_df = tts_df.loc[tts_df["backend"] == "IBM", ["n", "t_shot", "circuit"]]
 
     # use `estimate_duration` to get the predicted execution time of each circuit
-    tts_comp_df['t_shot_backend'] = tts_comp_df['circuit'].apply(
+    tts_comp_df["t_shot_backend"] = tts_comp_df["circuit"].apply(
         lambda qc: qc.estimate_duration(target=FAKE_IBM_BACKEND.target)
     )
 
     # remove device overhead (not measured in estimate_duration)
-    _overhead = device_df[device_df['backend'] == 'IBM'].iloc[0]['t_overhead']
-    tts_comp_df['t_shot'] = tts_comp_df['t_shot'] - _overhead
+    _overhead = device_df[device_df["backend"] == "IBM"].iloc[0]["t_overhead"]
+    tts_comp_df["t_shot"] = tts_comp_df["t_shot"] - _overhead
 
     # compute ratio between our predicted time and the built-in prediction
-    tts_comp_df['ratio'] = tts_comp_df['t_shot'] / tts_comp_df['t_shot_backend']
+    tts_comp_df["ratio"] = tts_comp_df["t_shot"] / tts_comp_df["t_shot_backend"]
 
-    tts_comp_df[['n', 'ratio', 't_shot', 't_shot_backend']]
+    tts_comp_df[["n", "ratio", "t_shot", "t_shot_backend"]]
 
     return (tts_comp_df,)
 
@@ -1652,16 +1753,18 @@ def _():
 @app.cell(disabled=True)
 def _():
     YOUR_CFG = {
-        'N_LIST': range(9, 46, 9),
-        'N_EXTRAP': np.logspace(1, 5, 24).astype(int),
-        'QUBITS_PER_TRAP': 20,
-        'PLOT_METRICS':  ['two_qubit_count', 'single_qubit_count', 'total_ops']
+        "N_LIST": range(9, 46, 9),
+        "N_EXTRAP": np.logspace(1, 5, 24).astype(int),
+        "QUBITS_PER_TRAP": 20,
+        "PLOT_METRICS": ["two_qubit_count", "single_qubit_count", "total_ops"],
     }
 
     # Default is a Shor 9 Qubit error correcting circuit
     def circuit_fn(n: int):
         if n % 9 != 0 or n < 9:
-            raise ValueError('Use n as a positive multiple of 9 (e.g., 9, 18, 27, ...).')
+            raise ValueError(
+                "Use n as a positive multiple of 9 (e.g., 9, 18, 27, ...)."
+            )
         _qc = qiskit.QuantumCircuit(n, n)
         n_blocks = n // 9
         for b in range(n_blocks):
@@ -1692,14 +1795,16 @@ def _():
 def _(YOUR_CFG, circuit_fn, scale_ibm):
     if mo.running_in_notebook():
         _iter = mo.status.progress_bar(
-            YOUR_CFG['N_LIST'],
-            title='Compiling your circuits',
-            subtitle='Monolithic IBM backend',
+            YOUR_CFG["N_LIST"],
+            title="Compiling your circuits",
+            subtitle="Monolithic IBM backend",
         )
     else:
-        _iter = YOUR_CFG['N_LIST']
+        _iter = YOUR_CFG["N_LIST"]
 
-    your_ibm = [scale_ibm(n, optimization_level=3, constructor=circuit_fn) for n in _iter]
+    your_ibm = [
+        scale_ibm(n, optimization_level=3, constructor=circuit_fn) for n in _iter
+    ]
     return (your_ibm,)
 
 
@@ -1707,12 +1812,12 @@ def _(YOUR_CFG, circuit_fn, scale_ibm):
 def _(YOUR_CFG, circuit_fn):
     if mo.running_in_notebook():
         _iter = mo.status.progress_bar(
-            YOUR_CFG['N_LIST'],
-            title='Compiling your circuits',
-            subtitle='Distributed Bosonic backend',
+            YOUR_CFG["N_LIST"],
+            title="Compiling your circuits",
+            subtitle="Distributed Bosonic backend",
         )
     else:
-        _iter = YOUR_CFG['N_LIST']
+        _iter = YOUR_CFG["N_LIST"]
 
     your_bosonic = [scale_bosonic(n, constructor=circuit_fn) for n in _iter]
     return (your_bosonic,)
@@ -1721,7 +1826,7 @@ def _(YOUR_CFG, circuit_fn):
 @app.cell(disabled=True)
 def _(your_bosonic, your_ibm):
     your_circuit_df = pd.DataFrame(your_ibm + your_bosonic)
-    your_circuit_df.loc[:, your_circuit_df.columns != 'circuit']
+    your_circuit_df.loc[:, your_circuit_df.columns != "circuit"]
     return (your_circuit_df,)
 
 
@@ -1735,12 +1840,12 @@ def _():
 
 @app.cell(disabled=True)
 def _(device_df, your_circuit_df):
-    _your_metrics = lambda g: pd.Series(circuit_metrics(g['circuit']))
+    _your_metrics = lambda g: pd.Series(circuit_metrics(g["circuit"]))
     your_scaling_df = your_circuit_df.join(your_circuit_df.apply(_your_metrics, axis=1))
     your_tts_df = your_scaling_df.join(
-        your_scaling_df.merge(device_df, on='backend').apply(tts_data_series, axis=1)
+        your_scaling_df.merge(device_df, on="backend").apply(tts_data_series, axis=1)
     )
-    your_tts_df.loc[:, your_tts_df.columns != 'circuit']
+    your_tts_df.loc[:, your_tts_df.columns != "circuit"]
     return your_scaling_df, your_tts_df
 
 
@@ -1754,11 +1859,11 @@ def _():
 
 @app.cell(disabled=True)
 def _(YOUR_CFG, your_tts_df):
-    for _metric in YOUR_CFG['PLOT_METRICS']:
+    for _metric in YOUR_CFG["PLOT_METRICS"]:
         plot_scaling_metric(
             your_tts_df,
             _metric,
-            title='Your Circuit Scaling',
+            title="Your Circuit Scaling",
         )
     return
 
@@ -1773,8 +1878,10 @@ def _():
 
 @app.cell(disabled=True)
 def _(YOUR_CFG, your_scaling_df):
-    your_pred_df = gate_count_prediction(your_scaling_df, YOUR_CFG['N_EXTRAP'])
-    your_extrapolation_df = your_pred_df.join(your_pred_df.apply(tts_data_series, axis=1))
+    your_pred_df = gate_count_prediction(your_scaling_df, YOUR_CFG["N_EXTRAP"])
+    your_extrapolation_df = your_pred_df.join(
+        your_pred_df.apply(tts_data_series, axis=1)
+    )
     return (your_extrapolation_df,)
 
 
@@ -1782,20 +1889,20 @@ def _(YOUR_CFG, your_scaling_df):
 def _(your_extrapolation_df):
     plot_scaling_metric(
         your_extrapolation_df,
-        'two_qubit_count',
-        title='Your Circuit Extrapolated Scaling',
-        xscale='log',
-        yscale='log',
-        ylabel='Projected Two-Qubit Gate Count',
+        "two_qubit_count",
+        title="Your Circuit Extrapolated Scaling",
+        xscale="log",
+        yscale="log",
+        ylabel="Projected Two-Qubit Gate Count",
     )
 
     plot_scaling_metric(
         your_extrapolation_df,
-        'log_tts',
-        title='Your Circuit Extrapolated Scaling',
-        xscale='log',
-        yscale='linear',
-        ylabel='Log Time-to-Solution (seconds)',
+        "log_tts",
+        title="Your Circuit Extrapolated Scaling",
+        xscale="log",
+        yscale="linear",
+        ylabel="Log Time-to-Solution (seconds)",
     )
     return
 
