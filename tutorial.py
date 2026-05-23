@@ -67,7 +67,7 @@ with app.setup(hide_code=True):
 
     # config constants
     VERIFY_CFG = {
-        'N_LIST': range(3, 13), # circuit sizes to sweep over
+        'N_LIST': range(3, 21), # circuit sizes to sweep over
         'SHOTS': 2048, # number of times to simulate each circuit
         'SEED': 1234, # RNG seed to ensure reproducibility
     }
