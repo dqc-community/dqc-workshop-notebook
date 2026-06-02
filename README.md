@@ -7,7 +7,7 @@ This repository contains materials for the distributed quantum computing (DQC) t
 Dependencies are bundled with the notebook using [Marimo's sandbox mode](https://docs.marimo.io/guides/package_management/inlining_dependencies/). This means you can run the tutorial directly from GitHub (no clone required!) using the following command:
 
 ```bash
-uvx marimo edit --sandbox https://github.com/dqc-community/dqc-workshop-notebook/blob/main/tutorial.py
+uvx marimo edit --sandbox https://github.com/dqc-community/dqc-workshop-notebook/blob/main/Tutorial_Notebooks/Marimo_Notebooks/1_Monolithic-vs-Distributed-Tutorial.py
 ```
 
 ## Requirements
@@ -32,10 +32,11 @@ uv sync --extra dev
 
 ### Marimo
 
-Run the marimo tutorial (in development mode):
+Run the marimo tutorials (in development mode):
 
 ```bash
-uv run marimo edit --sandbox tutorial.py
+uv run marimo edit --sandbox Tutorial_Notebooks/Marimo_Notebooks/1_Monolithic-vs-Distributed-Tutorial.py
+uv run marimo edit --sandbox Tutorial_Notebooks/Marimo_Notebooks/2_Distributing-a-Circuit-Tutorial.py
 ```
 
 ### Jupyter
