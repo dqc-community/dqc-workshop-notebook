@@ -631,7 +631,9 @@ def _():
 def verify_ghz_bosonic(n, shots=VERIFY_CFG['SHOTS'], traps=2):
     distributor = bosonic_sdk.BosonicDistributor()
     circuit = compile_bosonic_circuit(ghz_circuit(n), n, traps, distributor)
-    counts, _ = bosonic_sdk.Simulator().run_counts(circuit, ignore_c_remote=True, shots=shots)
+    sim = bosonic_sdk.Simulator()
+    circuit = sim.prepare(circuit)
+    counts, _ = sim.run_counts(circuit, ignore_c_remote=True, shots=shots, method="automatic")
     data = {
         'backend': 'Bosonic',
         'n': n,
@@ -644,7 +646,7 @@ def verify_ghz_bosonic(n, shots=VERIFY_CFG['SHOTS'], traps=2):
 
 @app.cell
 def _():
-    bosonic_data = [verify_ghz_bosonic(n) for n in VERIFY_CFG['N_LIST']]
+    bosonic_data = [verify_ghz_bosonic(n) for n in VERIFY_CFG['N_LIST'] if n <= 10]
     pd.DataFrame(bosonic_data)
     return (bosonic_data,)
 
