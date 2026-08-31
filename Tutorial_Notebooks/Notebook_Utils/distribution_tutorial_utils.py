@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 from time import perf_counter
 from typing import Any
@@ -15,6 +17,8 @@ from matplotlib.lines import Line2D
 from matplotlib.patches import Circle, Ellipse, FancyBboxPatch, PathPatch, Polygon
 from matplotlib.path import Path as MplPath
 from bosonic_converters import CircuitConverters
+from qiskit.providers.fake_provider import GenericBackendV2
+from qiskit.transpiler import CouplingMap
 from bosonic_model.qasm import Translator
 from bosonic_sdk.gate_statistics import GateStatistics
 from bosonic_sdk.distributor.distributors.bosonic_distributor import BosonicDistributor
@@ -40,6 +44,733 @@ TWO_QUBIT_GATE_NAMES = {
     "iswap",
     "ecr",
 }
+DEFAULT_SHERBROOKE_BASIS_GATES = ("id", "rz", "sx", "x", "ecr")
+NON_GATE_OPS = {"measure", "reset", "barrier", "delay"}
+
+
+def unique_int_linspace(start: int, stop: int, num: int) -> list[int]:
+    return [
+        int(n)
+        for n in np.unique(np.rint(np.linspace(start, stop, num)).astype(int))
+    ]
+
+
+def unique_int_logspace(start: int, stop: int, num: int) -> list[int]:
+    return [
+        int(n)
+        for n in np.unique(
+            np.rint(np.logspace(np.log10(start), np.log10(stop), num)).astype(int)
+        )
+    ]
+
+
+@lru_cache(maxsize=None)
+def sherbrooke_like_coords(rows: int = 13, cols: int = 15) -> tuple[tuple[int, int], ...]:
+    """Generate the regular coordinate pattern used by FakeSherbrooke."""
+    if rows % 2 != 1 or cols % 2 != 1:
+        raise ValueError("rows and cols must both be odd")
+    if rows < 3 or cols < 5:
+        raise ValueError("rows >= 3 and cols >= 5 are required")
+
+    coords = []
+    for y in range(1, rows + 1):
+        if y % 2 == 1:
+            start, stop = 1, cols + 1
+            if y == 1:
+                stop = cols
+            elif y == rows:
+                start = 2
+            xs = range(start, stop)
+        elif y % 4 == 2:
+            xs = range(1, cols + 1, 4)
+        else:
+            xs = range(3, cols + 1, 4)
+        coords.extend((x, y) for x in xs)
+    return tuple(coords)
+
+
+def _coordinate_edge_key(
+    a_xy: tuple[int, int],
+    b_xy: tuple[int, int],
+) -> tuple[int, int, str]:
+    ax, ay = a_xy
+    bx, by = b_xy
+    if ay == by:
+        return (min(ax, bx), ay, "h")
+    if ax == bx:
+        return (ax, min(ay, by), "v")
+    raise ValueError("only unit horizontal or vertical edges are supported")
+
+
+def sherbrooke_direction_signs(
+    reference_coords: tuple[tuple[int, int], ...],
+    reference_edges: list[list[int]] | list[tuple[int, int]],
+) -> dict[tuple[int, int, str], int]:
+    """Return FakeSherbrooke edge directions in coordinate space."""
+    signs = {}
+    for src, dst in reference_edges:
+        src_xy = reference_coords[src]
+        dst_xy = reference_coords[dst]
+        key = _coordinate_edge_key(src_xy, dst_xy)
+        if key[-1] == "h":
+            signs[key] = 1 if dst_xy[0] > src_xy[0] else -1
+        else:
+            signs[key] = 1 if dst_xy[1] > src_xy[1] else -1
+    return signs
+
+
+def sherbrooke_like_edges(
+    coords: tuple[tuple[int, int], ...],
+    *,
+    bidirectional: bool = False,
+    direction_signs: dict[tuple[int, int, str], int] | None = None,
+) -> list[tuple[int, int]]:
+    """Create nearest-neighbor coupling edges from Sherbrooke-like coordinates."""
+    index = {xy: i for i, xy in enumerate(coords)}
+    edges = []
+    for i, (x, y) in enumerate(coords):
+        for dx, dy in [(1, 0), (0, 1)]:
+            j = index.get((x + dx, y + dy))
+            if j is None:
+                continue
+            if bidirectional:
+                edges.extend([(i, j), (j, i)])
+                continue
+            key = _coordinate_edge_key(coords[i], coords[j])
+            sign = 1 if direction_signs is None else direction_signs.get(key, 1)
+            edges.append((i, j) if sign == 1 else (j, i))
+    return edges
+
+
+def sherbrooke_like_shape_for_qubits(
+    min_qubits: int,
+    *,
+    start_rows: int = 13,
+    start_cols: int = 15,
+) -> tuple[int, int, tuple[tuple[int, int], ...]]:
+    """Grow the Sherbrooke-like grid until it has at least min_qubits."""
+    rows, cols = start_rows, start_cols
+    coords = sherbrooke_like_coords(rows, cols)
+    while len(coords) < min_qubits:
+        rows += 2
+        cols += 2
+        coords = sherbrooke_like_coords(rows, cols)
+    return rows, cols, coords
+
+
+class SherbrookeLikeBackendFactory:
+    def __init__(
+        self,
+        reference_backend: Any,
+        *,
+        seed: int = 1234,
+        basis_gates: tuple[str, ...] = DEFAULT_SHERBROOKE_BASIS_GATES,
+        start_rows: int = 13,
+        start_cols: int = 15,
+    ) -> None:
+        self.reference_backend = reference_backend
+        self.seed = seed
+        self.basis_gates = tuple(basis_gates)
+        self.start_rows = start_rows
+        self.start_cols = start_cols
+        self.reference_config = reference_backend.configuration().to_dict()
+        self.reference_coords = tuple(
+            tuple(xy) for xy in self.reference_config["coords"]
+        )
+        self.reference_edges = frozenset(
+            tuple(edge) for edge in self.reference_config["coupling_map"]
+        )
+        self.direction_signs = sherbrooke_direction_signs(
+            self.reference_coords,
+            self.reference_config["coupling_map"],
+        )
+        self.dt = getattr(reference_backend, "dt", None)
+        self.dtm = getattr(reference_backend, "dtm", None)
+        self.backend_cache: dict[tuple[int, int, int], tuple[Any, dict[str, Any]]] = {}
+
+    def shape_for_qubits(
+        self,
+        min_qubits: int,
+    ) -> tuple[int, int, tuple[tuple[int, int], ...]]:
+        return sherbrooke_like_shape_for_qubits(
+            min_qubits,
+            start_rows=self.start_rows,
+            start_cols=self.start_cols,
+        )
+
+    def make_backend(
+        self,
+        min_qubits: int,
+        *,
+        seed: int | None = None,
+        return_metadata: bool = False,
+    ) -> Any:
+        seed = self.seed if seed is None else seed
+        rows, cols, coords = self.shape_for_qubits(min_qubits)
+        cache_key = (rows, cols, seed)
+        if cache_key not in self.backend_cache:
+            edges = sherbrooke_like_edges(coords, direction_signs=self.direction_signs)
+            backend = GenericBackendV2(
+                num_qubits=len(coords),
+                basis_gates=list(self.basis_gates),
+                coupling_map=CouplingMap(edges),
+                dt=self.dt,
+                dtm=self.dtm,
+                seed=seed,
+                noise_info=False,
+            )
+            self.backend_cache[cache_key] = (
+                backend,
+                {"rows": rows, "cols": cols, "coords": coords, "edges": edges},
+            )
+        backend, metadata = self.backend_cache[cache_key]
+        return (backend, metadata) if return_metadata else backend
+
+
+def chain_circuit(n: int) -> qiskit.QuantumCircuit:
+    qc = qiskit.QuantumCircuit(n, n)
+    qc.h(0)
+    for i in range(n - 1):
+        qc.cx(i, i + 1)
+    qc.measure(range(n), range(n))
+    return qc
+
+
+def brickwork_circuit(n: int, layers: int = 3) -> qiskit.QuantumCircuit:
+    qc = qiskit.QuantumCircuit(n, n)
+    for layer in range(layers):
+        for q in range(n):
+            qc.rz(0.1 * (layer + 1), q)
+            qc.sx(q)
+        for q in range(layer % 2, n - 1, 2):
+            qc.cx(q, q + 1)
+    qc.measure(range(n), range(n))
+    return qc
+
+
+def operation_width_counts(circuit: qiskit.QuantumCircuit) -> dict[str, int]:
+    counts = {
+        "single_qubit_count": 0,
+        "two_qubit_count": 0,
+        "multi_qubit_count": 0,
+    }
+    for inst in circuit.data:
+        if inst.operation.name in NON_GATE_OPS:
+            continue
+        width = len(inst.qubits)
+        if width == 1:
+            counts["single_qubit_count"] += 1
+        elif width == 2:
+            counts["two_qubit_count"] += 1
+        else:
+            counts["multi_qubit_count"] += 1
+    return counts
+
+
+def transpile_metric_summary(
+    circuit_name: str,
+    circuit: qiskit.QuantumCircuit,
+    backend_label: str,
+    backend: Any,
+    *,
+    optimization_level: int = 3,
+    seed_transpiler: int | None = None,
+) -> dict[str, Any]:
+    started = perf_counter()
+    transpiled = qiskit.transpile(
+        circuit,
+        backend=backend,
+        optimization_level=optimization_level,
+        seed_transpiler=seed_transpiler,
+    )
+    elapsed = perf_counter() - started
+    ops = transpiled.count_ops()
+    total_ops = transpiled.size()
+    data = {
+        "circuit": circuit_name,
+        "backend": backend_label,
+        "n": circuit.num_qubits,
+        "backend_qubits": backend.num_qubits,
+        "depth": transpiled.depth(),
+        "size": total_ops,
+        "ecr": ops.get("ecr", 0),
+        "sx": ops.get("sx", 0),
+        "rz": ops.get("rz", 0),
+        "x": ops.get("x", 0),
+        "measure": ops.get("measure", 0),
+        "measure_count": ops.get("measure", 0),
+        "reset_count": ops.get("reset", 0),
+        "barrier_count": ops.get("barrier", 0),
+        "total_ops": total_ops,
+        "compile_seconds": elapsed,
+    }
+    data.update(operation_width_counts(transpiled))
+    return data
+
+
+def ibm_heavy_hex_metric_summary(
+    n: int,
+    *,
+    constructor: Any,
+    backend_factory: SherbrookeLikeBackendFactory,
+    series: str,
+    seed_transpiler: int | None = None,
+) -> dict[str, Any]:
+    backend, metadata = backend_factory.make_backend(n, return_metadata=True)
+    row = transpile_metric_summary(
+        f"ghz_{n}",
+        constructor(n),
+        f"CustomSherbrooke{backend.num_qubits}",
+        backend,
+        seed_transpiler=seed_transpiler,
+    )
+    row.update(
+        {
+            "series": series,
+            "hardware": "IBM",
+            "compiler": "Qiskit",
+            "rows": metadata["rows"],
+            "cols": metadata["cols"],
+            "coupling_edges": len(metadata["edges"]),
+        }
+    )
+    return row
+
+
+@lru_cache(maxsize=1)
+def cached_bosonic_distributor() -> BosonicDistributor:
+    return BosonicDistributor()
+
+
+def bosonic_metric_summary(
+    n: int,
+    *,
+    constructor: Any,
+    scale_bosonic_fn: Any,
+    circuit_metrics_fn: Any,
+    series: str,
+    qubits_per_trap: int,
+    distributor: Any | None = None,
+) -> dict[str, Any]:
+    if distributor is None:
+        distributor = cached_bosonic_distributor()
+    started = perf_counter()
+    circuit_data = scale_bosonic_fn(
+        n,
+        constructor=constructor,
+        qubits_per_trap=qubits_per_trap,
+        distributor=distributor,
+    )
+    elapsed = perf_counter() - started
+    circuit = circuit_data["circuit"]
+    data = {
+        "circuit": f"ghz_{n}",
+        "backend": "Bosonic",
+        "series": series,
+        "hardware": "Bosonic",
+        "compiler": type(distributor).__name__,
+        "n": n,
+        "backend_qubits": circuit.num_qubits,
+        "qubits_per_module": qubits_per_trap,
+        "k": circuit_data["k"],
+        "compile_seconds": elapsed,
+    }
+    data.update(circuit_metrics_fn(circuit))
+    return data
+
+
+def json_ready(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {str(k): json_ready(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple, set)):
+        return [json_ready(v) for v in value]
+    if isinstance(value, np.ndarray):
+        return json_ready(value.tolist())
+    if isinstance(value, np.generic):
+        return json_ready(value.item())
+    if pd.isna(value):
+        return None
+    return value
+
+
+def load_compile_cache(
+    cache_path: Path,
+    metadata: dict[str, Any],
+    *,
+    rebuild_cache: bool = False,
+) -> pd.DataFrame:
+    metadata = json_ready(metadata)
+    if rebuild_cache or not cache_path.exists():
+        return pd.DataFrame()
+    try:
+        payload = json.loads(cache_path.read_text())
+    except json.JSONDecodeError:
+        print(f"Ignoring unreadable cache: {cache_path}", flush=True)
+        return pd.DataFrame()
+    if payload.get("metadata") != metadata:
+        print(f"Ignoring cache with stale metadata: {cache_path}", flush=True)
+        return pd.DataFrame()
+    return pd.DataFrame(payload.get("records", []))
+
+
+def save_compile_cache(
+    cache_path: Path,
+    metadata: dict[str, Any],
+    df: pd.DataFrame,
+) -> None:
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "metadata": json_ready(metadata),
+        "records": json.loads(df.to_json(orient="records")),
+    }
+    cache_path.write_text(json.dumps(payload, indent=2) + "\n")
+
+
+def _cache_value_missing(value: Any) -> bool:
+    if isinstance(value, (dict, list, tuple, set, np.ndarray)):
+        return False
+    return pd.isna(value)
+
+
+def _compact_cache_row(row: dict[str, Any]) -> dict[str, Any]:
+    return {k: v for k, v in row.items() if not _cache_value_missing(v)}
+
+
+def _compile_cache_lookup(cache_df: pd.DataFrame) -> dict[tuple[str, int], dict[str, Any]]:
+    if cache_df.empty or "series" not in cache_df or "n" not in cache_df:
+        return {}
+    return {
+        (row["series"], int(row["n"])): _compact_cache_row(row)
+        for row in cache_df.to_dict("records")
+        if not _cache_value_missing(row.get("series"))
+        and not _cache_value_missing(row.get("n"))
+    }
+
+
+def _append_compile_cache_row(
+    cache_path: Path,
+    metadata: dict[str, Any],
+    cache_df: pd.DataFrame,
+    row: dict[str, Any],
+) -> pd.DataFrame:
+    cache_df = pd.concat([cache_df, pd.DataFrame([row])], ignore_index=True, sort=False)
+    cache_df = cache_df.drop_duplicates(["series", "n"], keep="last")
+    cache_df = cache_df.sort_values(["series", "n"]).reset_index(drop=True)
+    save_compile_cache(cache_path, metadata, cache_df)
+    return cache_df
+
+
+def collect_compile_rows(
+    cache_df: pd.DataFrame,
+    cache_path: Path,
+    metadata: dict[str, Any],
+    series: str,
+    nvals: list[int],
+    row_fn: Any,
+    *,
+    compile_missing: bool = True,
+    subtitle: str | None = None,
+    progress_bar: Any | None = None,
+    progress_title: str = "Compiling",
+) -> tuple[pd.DataFrame, pd.DataFrame, int]:
+    rows = []
+    nvals = list(nvals)
+    total = len(nvals)
+    cache_lookup = _compile_cache_lookup(cache_df)
+    iterator = (
+        progress_bar(nvals, title=progress_title, subtitle=subtitle)
+        if progress_bar is not None
+        else nvals
+    )
+    for i, n in enumerate(iterator, start=1):
+        cache_key = (series, int(n))
+        row = cache_lookup.get(cache_key)
+        if row is None:
+            if not compile_missing:
+                continue
+            print(f"[{i}/{total}] Compiling {series} GHZ n={n}", flush=True)
+            row = row_fn(n)
+            cache_df = _append_compile_cache_row(cache_path, metadata, cache_df, row)
+            row = _compact_cache_row(row)
+            cache_lookup[cache_key] = row
+        rows.append(row)
+    return pd.DataFrame(rows), cache_df, total - len(rows)
+
+
+def apply_tts_model(
+    df: pd.DataFrame,
+    device_df: pd.DataFrame,
+    add_remote_link_terms_fn: Any,
+    tts_data_series_fn: Any,
+) -> pd.DataFrame:
+    device_params = device_df.rename(columns={"backend": "hardware"})
+    tts_input_df = add_remote_link_terms_fn(
+        df.merge(device_params, on="hardware", how="left")
+    )
+    tts_df = tts_input_df.join(tts_input_df.apply(tts_data_series_fn, axis=1))
+    tts_df["tts_hours"] = tts_df["tts"] / 3600
+    return tts_df
+
+
+def _linear_metric_fit(df: pd.DataFrame, metric: str) -> tuple[float, float]:
+    clean = df[["n", metric]].copy()
+    clean[metric] = pd.to_numeric(clean[metric], errors="coerce")
+    clean = clean.dropna()
+    if len(clean) < 2 or clean[metric].nunique() <= 1:
+        return 0.0, clean[metric].iloc[-1] if len(clean) else 0.0
+    return np.polyfit(clean["n"], clean[metric], 1)
+
+
+def _projected_count(fit: tuple[float, float], n: int) -> int:
+    slope, intercept = fit
+    return int(np.ceil(max(0.0, intercept + slope * n)))
+
+
+def _first_value(df: pd.DataFrame, column: str) -> Any:
+    return df[column].dropna().iloc[0]
+
+
+def _module_projection(
+    hardware: str,
+    n: int,
+    *,
+    bosonic_qubits_per_module: int,
+    bosonic_hardware: str = "Bosonic",
+) -> dict[str, Any]:
+    if hardware != bosonic_hardware:
+        return {
+            "qubits_per_module": np.nan,
+            "k": np.nan,
+            "module_capacity_qubits": np.nan,
+        }
+    k = int(np.ceil(n / bosonic_qubits_per_module))
+    return {
+        "qubits_per_module": bosonic_qubits_per_module,
+        "k": k,
+        "module_capacity_qubits": k * bosonic_qubits_per_module,
+    }
+
+
+def extended_gate_count_prediction(
+    df: pd.DataFrame,
+    nvals: list[int],
+    *,
+    fit_metrics: list[str],
+    fit_max_qubits: int,
+    bosonic_qubits_per_module: int,
+    bosonic_hardware: str = "Bosonic",
+) -> pd.DataFrame:
+    rows = []
+    for series, subdf in df.groupby("series"):
+        subdf = subdf.sort_values("n")
+        fits = {metric: _linear_metric_fit(subdf, metric) for metric in fit_metrics}
+        hardware = _first_value(subdf, "hardware")
+        compiler = _first_value(subdf, "compiler")
+        backend = _first_value(subdf, "backend")
+        projection = f"linear fit from measured <= {fit_max_qubits} qubits"
+
+        for n in nvals:
+            data = {
+                "series": series,
+                "hardware": hardware,
+                "compiler": compiler,
+                "backend": backend,
+                "circuit": f"ghz_{n}_linear_projection",
+                "n": int(n),
+                "projection": projection,
+            }
+            data.update(
+                {metric: _projected_count(fits[metric], n) for metric in fit_metrics}
+            )
+            data.update(
+                _module_projection(
+                    hardware,
+                    n,
+                    bosonic_qubits_per_module=bosonic_qubits_per_module,
+                    bosonic_hardware=bosonic_hardware,
+                )
+            )
+            data["two_qubit_count"] = (
+                data["local_two_qubit_count"] + data["remote_link_count"]
+            )
+            rows.append(data)
+    return pd.DataFrame(rows)
+
+
+def sorted_series_groups(
+    df: pd.DataFrame,
+    *,
+    group_col: str = "series",
+    sort_col: str = "n",
+) -> dict[str, pd.DataFrame]:
+    return {series: subdf.sort_values(sort_col) for series, subdf in df.groupby(group_col)}
+
+
+def _scatter_style(style: dict[str, Any], *, alpha: float) -> dict[str, Any]:
+    scatter_kwargs = {
+        "marker": style.get("marker", "o"),
+        "s": style.get("markersize", 6) ** 2,
+        "alpha": alpha,
+    }
+    color = style.get("color")
+    if color is not None and "markerfacecolor" not in style:
+        scatter_kwargs["color"] = color
+    if "markerfacecolor" in style:
+        scatter_kwargs["facecolors"] = style["markerfacecolor"]
+        if color is not None:
+            scatter_kwargs["edgecolors"] = style.get("markeredgecolor", color)
+    if "markeredgecolor" in style and "edgecolors" not in scatter_kwargs:
+        scatter_kwargs["edgecolors"] = style["markeredgecolor"]
+    if "markeredgewidth" in style:
+        scatter_kwargs["linewidths"] = style["markeredgewidth"]
+    return scatter_kwargs
+
+
+def plot_benchmark_metric(
+    df: pd.DataFrame,
+    metric: str,
+    ylabel: str,
+    *,
+    series_order: list[str],
+    series_styles: dict[str, dict[str, Any]],
+    yscale: str = "log",
+    title: str | None = None,
+    scatter: bool = False,
+    xscale: str = "log",
+    xlabel: str = "Logical qubits",
+    legend_title: str = "Architecture",
+    legend: bool = True,
+    ax: Any | None = None,
+    show: bool = False,
+    alpha: float = 0.5,
+) -> tuple[Any, Any]:
+    owns_fig = ax is None
+    if owns_fig:
+        fig, ax = plt.subplots(figsize=(7.5, 4.8))
+    else:
+        fig = ax.figure
+
+    groups = sorted_series_groups(df)
+    for series in series_order:
+        subdf = groups.get(series)
+        if subdf is None or subdf.empty:
+            continue
+        style = series_styles.get(series, {})
+        if scatter:
+            ax.scatter(
+                subdf["n"],
+                subdf[metric],
+                label=series,
+                **_scatter_style(style, alpha=alpha),
+            )
+        else:
+            ax.plot(subdf["n"], subdf[metric], label=series, **style)
+
+    if title is not None:
+        ax.set_title(title)
+    ax.set_xlabel(xlabel)
+    ax.set_xscale(xscale)
+    ax.set_ylabel(ylabel)
+    ax.set_yscale(yscale)
+    if legend:
+        ax.legend(title=legend_title)
+    ax.grid(True, which="both", alpha=0.25)
+    if owns_fig:
+        fig.tight_layout()
+    if show:
+        plt.show()
+    return fig, ax
+
+
+def plot_benchmark_grid(
+    df: pd.DataFrame,
+    plot_specs: list[tuple[str, str, str]],
+    title: str,
+    *,
+    series_order: list[str],
+    series_styles: dict[str, dict[str, Any]],
+    show: bool = True,
+) -> tuple[Any, Any]:
+    fig, axes = plt.subplots(2, 2, figsize=(12, 8), sharex=True)
+    for ax, (metric, ylabel, yscale) in zip(axes.ravel(), plot_specs):
+        plot_benchmark_metric(
+            df,
+            metric,
+            ylabel,
+            yscale=yscale,
+            series_order=series_order,
+            series_styles=series_styles,
+            ax=ax,
+            show=False,
+        )
+    fig.suptitle(title)
+    fig.tight_layout()
+    if show:
+        plt.show()
+    return fig, axes
+
+
+def plot_measured_and_extrapolated_metric(
+    measured_by_series: dict[str, pd.DataFrame],
+    projected_by_series: dict[str, pd.DataFrame],
+    metric: str,
+    ylabel: str,
+    *,
+    series_order: list[str],
+    series_styles: dict[str, dict[str, Any]],
+    cutoff_n: int,
+    yscale: str = "log",
+    title: str | None = None,
+    ax: Any | None = None,
+    legend: bool = True,
+    show: bool = False,
+) -> tuple[Any, Any]:
+    owns_fig = ax is None
+    if owns_fig:
+        fig, ax = plt.subplots(figsize=(7.5, 4.8))
+    else:
+        fig = ax.figure
+    colors = plt.rcParams["axes.prop_cycle"].by_key().get("color", [])
+
+    for i, series in enumerate(series_order):
+        measured = measured_by_series.get(series, pd.DataFrame())
+        projected = projected_by_series.get(series, pd.DataFrame())
+        style = series_styles.get(series, {})
+        color = style.get("color", colors[i % len(colors)] if colors else None)
+        if measured.empty or projected.empty:
+            continue
+
+        scatter_style = _scatter_style({**style, "markersize": 4}, alpha=0.35)
+        ax.scatter(
+            measured["n"],
+            measured[metric],
+            label=f"{series} measured",
+            **scatter_style,
+        )
+        ax.plot(
+            projected["n"],
+            projected[metric],
+            label=f"{series} extrapolated",
+            color=color,
+            linestyle=style.get("linestyle", "-"),
+            linewidth=2,
+        )
+
+    ax.axvline(cutoff_n, color="0.35", linestyle=":", linewidth=1)
+    ax.set_xscale("log")
+    ax.set_yscale(yscale)
+    ax.set_xlabel("Logical qubits")
+    ax.set_ylabel(ylabel)
+    if title is not None:
+        ax.set_title(title)
+    ax.grid(True, which="both", alpha=0.25)
+    if legend:
+        ax.legend()
+    if owns_fig:
+        fig.tight_layout()
+    if show:
+        plt.show()
+    return fig, ax
 
 
 @dataclass
