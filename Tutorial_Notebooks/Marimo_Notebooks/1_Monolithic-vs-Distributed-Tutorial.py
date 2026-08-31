@@ -633,7 +633,7 @@ def verify_ghz_bosonic(n, shots=VERIFY_CFG['SHOTS'], traps=2):
     circuit = compile_bosonic_circuit(ghz_circuit(n), n, traps, distributor)
     sim = bosonic_sdk.Simulator()
     circuit = sim.prepare(circuit)
-    counts, _ = bosonic_sdk.Simulator().run_counts(circuit, ignore_c_remote=True, shots=shots,method="automatic")
+    counts, _ = sim.run_counts(circuit, ignore_c_remote=True, shots=shots, method="automatic")
     data = {
         'backend': 'Bosonic',
         'n': n,
